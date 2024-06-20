@@ -6,6 +6,8 @@ build-backend = "hatchling.build"
 name = "knit-graphs"
 dynamic = ["version"]
 description = 'A graph representation of knitted structures where each loop is a node and edges represent yarn and stictch relationships.'
+homepage = "https://github.com/mhofmann-Khoury/knit_graph"
+repositor = "https://github.com/mhofmann-Khoury/knit_graph"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
@@ -35,28 +37,19 @@ Source = "https://github.com/m.hofmann/knit-graphs"
 [tool.hatch.version]
 path = "src/knit_graphs/__about__.py"
 
+[tool.hatch.build.targets.sdist]
+include = [
+  "knit_graphs/*.py",
+]
+exclude = [
+  "/tests",
+  "requirements.txt",
+  ".gitignore",
+]
+
 [tool.hatch.envs.types]
 extra-dependencies = [
   "mypy>=1.0.0",
 ]
 [tool.hatch.envs.types.scripts]
 check = "mypy --install-types --non-interactive {args:src/knit_graphs tests}"
-
-[tool.coverage.run]
-source_pkgs = ["knit_graphs", "tests"]
-branch = true
-parallel = true
-omit = [
-  "src/knit_graphs/__about__.py",
-]
-
-[tool.coverage.paths]
-knit_graphs = ["src/knit_graphs", "*/knit-graphs/src/knit_graphs"]
-tests = ["tests", "*/knit-graphs/tests"]
-
-[tool.coverage.report]
-exclude_lines = [
-  "no cov",
-  "if __name__ == .__main__.:",
-  "if TYPE_CHECKING:",
-]
