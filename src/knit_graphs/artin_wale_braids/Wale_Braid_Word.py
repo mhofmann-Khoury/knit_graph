@@ -1,14 +1,16 @@
-"""Module contianing the Wale Braid Word Class"""
+"""Module containing the Wale Braid Word Class"""
+from __future__ import annotations
 
-from knit_graphs.Loop import Loop
 from knit_graphs.artin_wale_braids.Crossing_Direction import Crossing_Direction
+from knit_graphs.Loop import Loop
 
 
 class Wale_Braid_Word:
     """
        Representation of loop crossings over a set of loops in a common course
     """
-    def __init__(self, loops: list[Loop], crossings: dict[int, Crossing_Direction]):
+
+    def __init__(self, loops: list[Loop], crossings: dict[int, Crossing_Direction]) -> None:
         self.loops: list[Loop] = loops
         self.crossings: dict[int, Crossing_Direction] = crossings
 
@@ -24,25 +26,21 @@ class Wale_Braid_Word:
 
         return new_loops
 
-    def __invert__(self):
+    def __invert__(self) -> Wale_Braid_Word:
         new_loops = self.new_loop_order()
         new_crossings = {i: ~c for i, c in self.crossings.items()}
         return Wale_Braid_Word(new_loops, new_crossings)
 
-    def __eq__(self, other):
-        if not isinstance(other, Wale_Braid_Word):
+    def __eq__(self, other: Wale_Braid_Word) -> bool:
+        if (len(self) != len(other)
+                or any(l != o for l, o in zip(self.loops, other.loops))
+                or any(i not in other.crossings for i in self.crossings)
+                or any(other.crossings[i] != cd for i, cd in self.crossings.items())):
             return False
-        for l, o in zip(self.loops, other.loops):
-            if l != o:
-                return False
-        for i, cd in self.crossings.items():
-            if i not in other.crossings:
-                return False
-            if other.crossings[i] != cd:
-                return False
-        return True
+        else:
+            return True
 
-    def is_inversion(self, other) -> bool:
+    def is_inversion(self, other: Wale_Braid_Word) -> bool:
         """
         :param other: other braid word to compare to
         :return: True if other is equal to inversion of self
@@ -50,5 +48,5 @@ class Wale_Braid_Word:
         invert = ~self
         return other == invert
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.loops)

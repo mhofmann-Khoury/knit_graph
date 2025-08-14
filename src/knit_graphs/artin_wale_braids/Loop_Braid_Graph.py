@@ -1,8 +1,10 @@
 """Module containing the Loop Braid Graph class."""
-import networkx
+from typing import cast
 
-from knit_graphs.Loop import Loop
+from networkx import DiGraph
+
 from knit_graphs.artin_wale_braids.Crossing_Direction import Crossing_Direction
+from knit_graphs.Loop import Loop
 
 
 class Loop_Braid_Graph:
@@ -10,10 +12,10 @@ class Loop_Braid_Graph:
         Tracks crossing braid edges between loops
     """
 
-    def __init__(self):
-        self.loop_crossing_graph: networkx.DiGraph = networkx.DiGraph()
+    def __init__(self) -> None:
+        self.loop_crossing_graph: DiGraph = DiGraph()
 
-    def add_crossing(self, left_loop: Loop, right_loop: Loop, crossing_direction: Crossing_Direction):
+    def add_crossing(self, left_loop: Loop, right_loop: Loop, crossing_direction: Crossing_Direction) -> None:
         """
         Adds edge between loops with attribute of the crossing direction.
         :param left_loop: Loop on the left side of the crossing.
@@ -22,11 +24,11 @@ class Loop_Braid_Graph:
         """
         self.loop_crossing_graph.add_edge(left_loop, right_loop, crossing=crossing_direction)
 
-    def __contains__(self, item: Loop | tuple[Loop, Loop]):
+    def __contains__(self, item: Loop | tuple[Loop, Loop]) -> bool:
         if isinstance(item, Loop):
             return item in self.loop_crossing_graph.nodes
         else:
-            return self.loop_crossing_graph.has_edge(item[0], item[1])
+            return bool(self.loop_crossing_graph.has_edge(item[0], item[1]))
 
     def left_crossing_loops(self, left_loop: Loop) -> list[Loop]:
         """
@@ -59,4 +61,4 @@ class Loop_Braid_Graph:
         """
         if not self.loop_crossing_graph.has_edge(left_loop, right_loop):
             self.add_crossing(left_loop, right_loop, Crossing_Direction.No_Cross)
-        return self.loop_crossing_graph[left_loop][right_loop]['crossing']
+        return cast(Crossing_Direction, self.loop_crossing_graph[left_loop][right_loop]['crossing'])

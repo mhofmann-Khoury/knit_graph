@@ -1,0 +1,415 @@
+# =============================================================================
+# AUTOMATED RELEASE WORKFLOW
+# =============================================================================
+# This GitHub Actions workflow automatically publishes your package to PyPI
+# and TestPyPI based on GitHub releases.
+#
+# Release Strategy:
+# - Pre-releases (marked "Set as pre-release") → TestPyPI
+# - Full releases (not marked as pre-release) → PyPI
+#
+# Setup Requirements:
+# 1. Create API tokens on PyPI and TestPyPI
+# 2. Add tokens as repository secrets
+# 3. Ensure version in pyproject.toml matches release tag
+#
+# Release Process:
+# 1. Update version in pyproject.toml
+# 2. Create GitHub release with tag matching version
+# 3. Mark as pre-release for TestPyPI, or full release for PyPI
+# 4. Workflow automatically builds and publishes
+
+name: Release
+
+# =============================================================================
+# WORKFLOW TRIGGERS
+# =============================================================================
+on:
+  # Trigger on GitHub releases (both pre-releases and full releases)
+  release:
+    types: [published]
+
+  # Allow manual triggering for testing
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target repository'
+        required: true
+        default: 'testpypi'
+        type: choice
+        options:
+          - testpypi
+          - pypi
+
+# =============================================================================
+# WORKFLOW-LEVEL ENVIRONMENT VARIABLES
+# =============================================================================
+env:
+  PYTHON_VERSION: "3.11"           # Python version for building
+  POETRY_VERSION: "1.7.1"          # Poetry version to use
+  # TODO: Update package name (use underscores for Python imports)
+  PACKAGE_NAME: "your_project_name"
+
+# =============================================================================
+# WORKFLOW PERMISSIONS
+# =============================================================================
+permissions:
+  contents: read                    # Read repository contents
+  id-token: write                   # Required for trusted publishing (optional but recommended)
+
+# =============================================================================
+# JOB DEFINITIONS
+# =============================================================================
+jobs:
+  # ===========================================================================
+  # RELEASE VALIDATION
+  # ===========================================================================
+  # Validate that the release is properly configured before publishing
+  validate-release:
+    name: Validate Release
+    runs-on: ubuntu-latest
+
+    outputs:
+      target-repo: ${{ steps.determine-target.outputs.target }}
+      version: ${{ steps.get-version.outputs.version }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Determine target repository
+        id: determine-target
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger - use input parameter
+            echo "target=${{ github.event.inputs.target }}" >> $GITHUB_OUTPUT
+            echo "📝 Manual release to ${{ github.event.inputs.target }}"
+          elif [[ "${{ github.event.release.prerelease }}" == "true" ]]; then
+            # Pre-release - publish to TestPyPI
+            echo "target=testpypi" >> $GITHUB_OUTPUT
+            echo "🧪 Pre-release detected - will publish to TestPyPI"
+          else
+            # Full release - publish to PyPI
+            echo "target=pypi" >> $GITHUB_OUTPUT
+            echo "🚀 Full release detected - will publish to PyPI"
+          fi
+
+      - name: Get version from pyproject.toml
+        id: get-version
+        run: |
+          # Extract version from pyproject.toml
+          VERSION=$(grep '^version = ' pyproject.toml | cut -d '"' -f 2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Package version: $VERSION"
+
+      - name: Validate version matches release tag
+        if: github.event_name == 'release'
+        run: |
+          RELEASE_TAG="${{ github.event.release.tag_name }}"
+          PYPROJECT_VERSION="${{ steps.get-version.outputs.version }}"
+
+          # Remove 'v' prefix from tag if present
+          CLEAN_TAG=${RELEASE_TAG#v}
+
+          if [[ "$CLEAN_TAG" != "$PYPROJECT_VERSION" ]]; then
+            echo "❌ Version mismatch!"
+            echo "Release tag: $RELEASE_TAG (cleaned: $CLEAN_TAG)"
+            echo "pyproject.toml version: $PYPROJECT_VERSION"
+            echo ""
+            echo "Please ensure the release tag matches the version in pyproject.toml"
+            echo "Either update pyproject.toml or recreate the release with correct tag"
+            exit 1
+          else
+            echo "✅ Version validation passed: $PYPROJECT_VERSION"
+          fi
+
+  # ===========================================================================
+  # BUILD AND TEST PACKAGE
+  # ===========================================================================
+  # Build the package and run full test suite before publishing
+  build-and-test:
+    name: Build and Test Package
+    runs-on: ubuntu-latest
+    needs: validate-release
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Load cached dependencies
+        id: cached-poetry-dependencies
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Install dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --no-root
+
+      - name: Install project
+        run: poetry install --no-interaction
+
+      - name: Run full test suite
+        run: |
+          echo "🧪 Running complete test suite before release..."
+          poetry run coverage run -m unittest discover tests
+          poetry run coverage report --fail-under=80
+
+      - name: Run pre-commit hooks
+        run: |
+          echo "🔍 Running all quality checks..."
+          poetry run pre-commit run --all-files
+
+      - name: Build package
+        run: |
+          echo "📦 Building package..."
+          poetry build
+
+      - name: Validate package
+        run: |
+          echo "✅ Validating package with twine..."
+          poetry run twine check dist/*
+
+      - name: Test package installation
+        run: |
+          echo "🔧 Testing package installation..."
+          # Create a temporary virtual environment to test installation
+          python -m venv test_env
+          source test_env/bin/activate || test_env\Scripts\activate.bat
+          pip install dist/*.whl
+          # TODO: Update import test for your actual package name
+          python -c "import ${{ env.PACKAGE_NAME }}; print('✅ Package import successful')"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: python-package-${{ needs.validate-release.outputs.version }}
+          path: dist/
+
+  # ===========================================================================
+  # PUBLISH TO TEST PYPI
+  # ===========================================================================
+  # Publish to TestPyPI for pre-releases
+  publish-testpypi:
+    name: Publish to TestPyPI
+    runs-on: ubuntu-latest
+    needs: [validate-release, build-and-test]
+    if: needs.validate-release.outputs.target-repo == 'testpypi'
+
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/${{ env.PACKAGE_NAME }}
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: python-package-${{ needs.validate-release.outputs.version }}
+          path: dist/
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+
+      - name: Configure Poetry for TestPyPI
+        run: |
+          poetry config repositories.testpypi https://test.pypi.org/legacy/
+          poetry config pypi-token.testpypi ${{ secrets.TEST_PYPI_API_TOKEN }}
+
+      - name: Publish to TestPyPI
+        run: |
+          echo "🧪 Publishing pre-release v${{ needs.validate-release.outputs.version }} to TestPyPI..."
+          poetry publish --repository testpypi --dry-run  # Validate first
+          poetry publish --repository testpypi
+
+      - name: Verify TestPyPI publication
+        run: |
+          echo "✅ Package published to TestPyPI!"
+          echo "🔗 View at: https://test.pypi.org/project/${{ env.PACKAGE_NAME }}/"
+          echo "📥 Test installation with:"
+          echo "    pip install --index-url https://test.pypi.org/simple/ ${{ env.PACKAGE_NAME }}==${{ needs.validate-release.outputs.version }}"
+
+  # ===========================================================================
+  # PUBLISH TO PYPI
+  # ===========================================================================
+  # Publish to PyPI for full releases
+  publish-pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: [validate-release, build-and-test]
+    if: needs.validate-release.outputs.target-repo == 'pypi'
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/${{ env.PACKAGE_NAME }}
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: python-package-${{ needs.validate-release.outputs.version }}
+          path: dist/
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+
+      - name: Configure Poetry for PyPI
+        run: |
+          poetry config pypi-token.pypi ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Publish to PyPI
+        run: |
+          echo "🚀 Publishing release v${{ needs.validate-release.outputs.version }} to PyPI..."
+          poetry publish --dry-run  # Validate first
+          poetry publish
+
+      - name: Verify PyPI publication
+        run: |
+          echo "✅ Package published to PyPI!"
+          echo "🔗 View at: https://pypi.org/project/${{ env.PACKAGE_NAME }}/"
+          echo "📥 Install with: pip install ${{ env.PACKAGE_NAME }}==${{ needs.validate-release.outputs.version }}"
+
+  # ===========================================================================
+  # POST-RELEASE ACTIONS
+  # ===========================================================================
+  # Optional post-release actions (documentation updates, notifications, etc.)
+  post-release:
+    name: Post-Release Actions
+    runs-on: ubuntu-latest
+    needs: [validate-release, publish-testpypi, publish-pypi]
+    if: always() && (needs.publish-testpypi.result == 'success' || needs.publish-pypi.result == 'success')
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Update release notes
+        if: needs.validate-release.outputs.target-repo == 'pypi'
+        run: |
+          echo "📝 Full release completed successfully!"
+          echo "Version: ${{ needs.validate-release.outputs.version }}"
+          echo "Target: PyPI"
+
+      - name: Update pre-release notes
+        if: needs.validate-release.outputs.target-repo == 'testpypi'
+        run: |
+          echo "🧪 Pre-release completed successfully!"
+          echo "Version: ${{ needs.validate-release.outputs.version }}"
+          echo "Target: TestPyPI"
+
+      # TODO: Add additional post-release actions as needed:
+      # - Update documentation website
+      # - Send notifications to team
+      # - Create follow-up issues
+      # - Update changelog
+      # - Trigger downstream builds
+
+# =============================================================================
+# TODO CHECKLIST FOR RELEASE SETUP
+# =============================================================================
+# When using this template, complete the following setup:
+#
+# 1. CREATE API TOKENS:
+#    PyPI (https://pypi.org/manage/account/token/):
+#    - [ ] Go to Account Settings → API tokens
+#    - [ ] Create token with "Entire account" or specific project scope
+#    - [ ] Copy the token (starts with pypi-)
+#
+#    TestPyPI (https://test.pypi.org/manage/account/token/):
+#    - [ ] Go to Account Settings → API tokens
+#    - [ ] Create token with "Entire account" or specific project scope
+#    - [ ] Copy the token (starts with pypi-)
+#
+# 2. ADD GITHUB SECRETS:
+#    Repository Settings → Secrets and Variables → Actions:
+#    - [ ] Add PYPI_API_TOKEN with your PyPI token
+#    - [ ] Add TEST_PYPI_API_TOKEN with your TestPyPI token
+#
+# 3. CONFIGURE GITHUB ENVIRONMENTS (Optional but Recommended):
+#    Repository Settings → Environments:
+#    - [ ] Create "pypi" environment
+#    - [ ] Create "testpypi" environment
+#    - [ ] Add protection rules (require reviews for production releases)
+#    - [ ] Restrict deployments to specific branches
+#
+# 4. UPDATE WORKFLOW FOR YOUR PROJECT:
+#    - [ ] Update PACKAGE_NAME environment variable
+#    - [ ] Update import test in build-and-test job
+#    - [ ] Customize post-release actions as needed
+#
+# 5. RELEASE PROCESS:
+#    For Pre-releases (TestPyPI):
+#    - [ ] Update version in pyproject.toml (e.g., 1.0.0a1, 1.0.0b1, 1.0.0rc1)
+#    - [ ] Commit and push changes
+#    - [ ] Create GitHub release with matching tag
+#    - [ ] ✅ Check "Set as a pre-release"
+#    - [ ] Publish release → Triggers TestPyPI deployment
+#
+#    For Full Releases (PyPI):
+#    - [ ] Update version in pyproject.toml (e.g., 1.0.0)
+#    - [ ] Commit and push changes
+#    - [ ] Create GitHub release with matching tag
+#    - [ ] ❌ Leave "Set as a pre-release" unchecked
+#    - [ ] Publish release → Triggers PyPI deployment
+#
+# 6. VERSION MANAGEMENT BEST PRACTICES:
+#    - [ ] Use semantic versioning (MAJOR.MINOR.PATCH)
+#    - [ ] Pre-release versions: 1.0.0a1 (alpha), 1.0.0b1 (beta), 1.0.0rc1 (release candidate)
+#    - [ ] Keep CHANGELOG.md updated with version changes
+#    - [ ] Consider using bump2version for automated version management
+#
+# 7. TESTING YOUR RELEASE WORKFLOW:
+#    - [ ] Create a test pre-release to verify TestPyPI workflow
+#    - [ ] Install from TestPyPI: pip install --index-url https://test.pypi.org/simple/ your-package
+#    - [ ] Only create PyPI releases after TestPyPI testing
+#
+# 8. SECURITY CONSIDERATIONS:
+#    - [ ] Use GitHub environments with protection rules for production
+#    - [ ] Consider using PyPI trusted publishing instead of API tokens
+#    - [ ] Limit token permissions to specific projects when possible
+#    - [ ] Regularly rotate API tokens
+#
+# 9. MONITORING AND NOTIFICATIONS:
+#    - [ ] Set up GitHub notifications for workflow failures
+#    - [ ] Monitor PyPI project page for successful uploads
+#    - [ ] Consider adding Slack/email notifications for releases
+#
+# EXAMPLE RELEASE COMMANDS:
+#   # Update version and create release
+#   poetry version patch                     # Increment patch version
+#   git add pyproject.toml
+#   git commit -m "Bump version to $(poetry version -s)"
+#   git tag "v$(poetry version -s)"
+#   git push origin main --tags
+#
+#   # Then create GitHub release through web UI or gh CLI:
+#   gh release create "v$(poetry version -s)" --title "Release v$(poetry version -s)" --notes "Release notes here"
+#
+#   # For pre-release:
+#   gh release create "v$(poetry version -s)" --title "Pre-release v$(poetry version -s)" --notes "Pre-release notes" --prerelease

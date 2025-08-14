@@ -1,21 +1,24 @@
-import networkx
-import plotly.graph_objects as go
+"""This module supports visualization of knit-graphs using the plotly library."""
+from typing import Any, Iterable, cast
 
+import plotly.graph_objects as go
+from networkx import DiGraph
+
+from knit_graphs.artin_wale_braids.Crossing_Direction import Crossing_Direction
 from knit_graphs.Course import Course
 from knit_graphs.Knit_Graph import Knit_Graph
 from knit_graphs.Loop import Loop
 from knit_graphs.Pull_Direction import Pull_Direction
-from knit_graphs.artin_wale_braids.Crossing_Direction import Crossing_Direction
 
 
 def get_base_row_course_positions(course: Course, start_on_left: bool, loop_space: float = 1.0) -> tuple[dict[Loop, float], float, float]:
     """
-    :param course: course assumed to be base of knit graph for visualization
-    :param start_on_left: If True, loops will start on left side of plot
-    :param loop_space: spacing between loops
+    :param course: course assumed to be base of knit graph for visualization.
+    :param start_on_left: If True, loops will start on left side of plot.
+    :param loop_space: spacing between loops.
     :return: dictionary of loops in course keyed to x position. The minimum loop position. The maximum loop position.
     """
-    loops = course
+    loops: Iterable[Loop] = list(course)
     if not start_on_left:
         loops = reversed(course)
     positions = {l: x * loop_space for x, l in enumerate(loops)}
@@ -34,12 +37,12 @@ def get_base_round_course_positions(course: Course, start_on_left: bool,
       Min loop position. Max loop position
     """
     split_index = int(len(course) / 2)
-    front_loops = course[:split_index]
-    back_loops = course[split_index:]
+    front_loops: list[Loop] = cast(list[Loop], course[:split_index])
+    back_loops: list[Loop] = cast(list[Loop], course[split_index:])
     if start_on_left:
-        back_loops = reversed(back_loops)
+        back_loops = [*reversed(back_loops)]
     else:
-        front_loops = reversed(back_loops)
+        front_loops = [*reversed(back_loops)]
     front_positions = {l: x * loop_space for x, l in enumerate(front_loops)}
     back_positions = {l: x * loop_space + back_shift for x, l in enumerate(back_loops)}
     for back_loop in back_loops:
@@ -53,14 +56,14 @@ def get_base_round_course_positions(course: Course, start_on_left: bool,
     return front_positions, back_positions, min(min_front, min_back), max(max_front, max_back)
 
 
-def get_loop_x_by_parent_average(data_graph: networkx.DiGraph, loop: Loop) -> float | None:
+def get_loop_x_by_parent_average(data_graph: DiGraph, loop: Loop) -> float | None:
     """
     :param data_graph: Collection of loop nodes to assigned locations.
     :param loop: Loop to derive location for.
     :return: X position derived from parent_loop locations for loop.
     """
 
-    def _parent_weight(stack_position):
+    def _parent_weight(stack_position: int) -> int:
         return len(loop.parent_loops) - stack_position
 
     parent_positions = {data_graph.nodes[p]['x'] * _parent_weight(sp): _parent_weight(sp)
@@ -68,10 +71,10 @@ def get_loop_x_by_parent_average(data_graph: networkx.DiGraph, loop: Loop) -> fl
                         if p in data_graph.nodes}
     if len(parent_positions) == 0:
         return None
-    return sum(parent_positions.keys()) / sum(parent_positions.values())
+    return float(sum(parent_positions.keys())) / float(sum(parent_positions.values()))
 
 
-def get_loop_x_by_yarn_neighbor_average(data_graph: networkx.DiGraph, loop: Loop, prior_space=1, next_space=-1) -> float | None:
+def get_loop_x_by_yarn_neighbor_average(data_graph: DiGraph, loop: Loop, prior_space: int = 1, next_space: int = -1) -> float | None:
     """
     :param data_graph: Collection of loop nodes to assigned locations.
     :param loop: Loop to place.
@@ -86,10 +89,12 @@ def get_loop_x_by_yarn_neighbor_average(data_graph: networkx.DiGraph, loop: Loop
         x_neighbors.append(data_graph.nodes[prior_loop]['x'] + prior_space)
     if next_loop is not None and next_loop in data_graph.nodes:
         x_neighbors.append(data_graph.nodes[next_loop]['x'] + next_space)
-    return sum(x_neighbors) / len(x_neighbors)
+    if len(x_neighbors) == 0:
+        return None
+    return float(sum(x_neighbors)) / float(len(x_neighbors))
 
 
-def re_balance_course(data_graph: networkx.DiGraph, course: Course, target_width: float | None,
+def re_balance_course(data_graph: DiGraph, course: Course, target_width: float | None,
                       left_side: float = 0, right_side: float | None = None) -> dict[Loop, float]:
     """
     :param target_width: Width to retarget to. Defaults to definition from right side value.
@@ -108,14 +113,14 @@ def re_balance_course(data_graph: networkx.DiGraph, course: Course, target_width
             right_side = max_x
         target_width = right_side - left_side
 
-    def _target_float_size(u, v) -> float:
+    def _target_float_size(u: Loop, v: Loop) -> float:
         current_size = abs(data_graph.nodes[u]['x'] - data_graph.nodes[v]['x'])
-        return (current_size * target_width) / course_width
+        return float((current_size * target_width)) / float(course_width)
 
     return {l: _target_float_size(min_loop, l) + left_side for l in course}
 
 
-def max_x_in_course(course, data_graph) -> tuple[float, Loop]:
+def max_x_in_course(course: Course, data_graph: DiGraph) -> tuple[float, Loop]:
     """
     :param course:
     :param data_graph:
@@ -124,7 +129,7 @@ def max_x_in_course(course, data_graph) -> tuple[float, Loop]:
     return max([(data_graph.nodes[l]['x'], l) for l in course], key=lambda tup: tup[0])
 
 
-def min_x_in_course(course, data_graph) -> tuple[float, Loop]:
+def min_x_in_course(course: Course, data_graph: DiGraph) -> tuple[float, Loop]:
     """
     :param course:
     :param data_graph:
@@ -133,7 +138,7 @@ def min_x_in_course(course, data_graph) -> tuple[float, Loop]:
     return min([(data_graph.nodes[l]['x'], l) for l in course], key=lambda tup: tup[0])
 
 
-def get_loop_y_by_neighbor_floats(data_graph: networkx.DiGraph, loop: Loop, float_buffer: float = 0.25) -> float | None:
+def get_loop_y_by_neighbor_floats(data_graph: DiGraph, loop: Loop, float_buffer: float = 0.25) -> float | None:
     """
     :param data_graph: Collection of loop nodes to assign locations.
     :param loop: Loop to assign y location by neighboring floats.
@@ -144,14 +149,21 @@ def get_loop_y_by_neighbor_floats(data_graph: networkx.DiGraph, loop: Loop, floa
     positions.extend([data_graph.nodes[bl]['y'] - float_buffer for bl in loop.back_floats if bl in data_graph.nodes])
     if len(positions) == 0:
         return None
-    return sum(positions) / len(positions)
+    return float(sum(positions) / len(positions))
 
 
-def shift_purls(knit_graph: Knit_Graph, data_graph: networkx.DiGraph, purl_shift: float = 0.25):
+def shift_purls(knit_graph: Knit_Graph, data_graph: DiGraph, purl_shift: float = 0.25) -> None:
+    """
+    Shifts the position of each stitch involved in purls to make the look of knit-purl patterns more distinct.
+    Args:
+        knit_graph: The Knit_Graph to visualize purls in.
+        data_graph: The digraph of data used to create the visualization.
+        purl_shift: The amount to shift the purl stitches vertically by.
+    """
     shifted = set()
     for u, v in knit_graph.stitch_graph.edges:
         if v not in shifted:
-            pull_direction = knit_graph.stitch_graph[u][v]['pull_direction']
+            pull_direction = knit_graph.get_pull_direction(u, v)
             if pull_direction is Pull_Direction.FtB:
                 data_graph.nodes[v]['x'] += purl_shift
                 shifted.add(v)
@@ -163,20 +175,34 @@ def shift_purls(knit_graph: Knit_Graph, data_graph: networkx.DiGraph, purl_shift
 def visualize_stitches(knit_graph: Knit_Graph,
                        first_course_index: int = 0, top_course_index: int | None = None,
                        start_on_left: bool = True,
-                       re_balance_to_course_width=False,
-                       re_balance_to_base_width=False,
-                       left_zero_align=True,
-                       graph_title: str = "knit_graph"):
+                       re_balance_to_course_width: bool = False,
+                       re_balance_to_base_width: bool = False,
+                       left_zero_align: bool = True,
+                       graph_title: str = "knit_graph") -> None:
+    """
+    Generates a plotly visualization of the given knitgraph based on the given configuration.
+
+    Args:
+        knit_graph:
+        first_course_index:
+        top_course_index:
+        start_on_left:
+        re_balance_to_course_width (bool):
+        re_balance_to_base_width (bool): If set to true, the visualization will be rebalanced to space nodes evenly according to the base-course width of the knit graph.
+        left_zero_align (bool): If True, aligns the 0th position with the left of the figure. Defaults to True.
+        graph_title (str): The name of the figure. Defaults to "knit_graph".
+
+    """
     data_graph = position_loops(first_course_index, knit_graph, left_zero_align, re_balance_to_base_width, re_balance_to_course_width, start_on_left, top_course_index)
 
     yarn_loop_traces = collect_yarn_loop_traces(data_graph, knit_graph)
 
     yarn_float_traces = collect_yarn_float_traces(data_graph, knit_graph)
 
-    def _new_edge_data():
+    def _new_edge_data() -> dict[str: list]:
         return {'x': [], 'y': [], 'edge': [], 'is_start': []}
 
-    def _add_edge_data(edge_data: dict[str, list], u_loop: Loop, v_loop: Loop):
+    def _add_edge_data(edge_data: dict[str, list], u_loop: Loop, v_loop: Loop) -> None:
         data_graph.add_edge(u_loop, v_loop, pull_direction=pull_direction)
         edge_data['x'].append(data_graph.nodes[u_loop]['x'])
         edge_data['y'].append(data_graph.nodes[u_loop]['y'])
@@ -290,9 +316,23 @@ def visualize_stitches(knit_graph: Knit_Graph,
     fig.show()
 
 
-def position_loops(first_course_index, knit_graph, left_zero_align, re_balance_to_base_width, re_balance_to_course_width,
-                   start_on_left, top_course_index):
-    data_graph = networkx.DiGraph()
+def position_loops(first_course_index: int, knit_graph: Knit_Graph, left_zero_align: bool, re_balance_to_base_width: bool, re_balance_to_course_width: bool,
+                   start_on_left: bool, top_course_index: int | None = None) -> DiGraph:
+    """
+
+    Args:
+        first_course_index:
+        knit_graph:
+        left_zero_align:
+        re_balance_to_base_width:
+        re_balance_to_course_width:
+        start_on_left:
+        top_course_index:
+
+    Returns:
+
+    """
+    data_graph = DiGraph()
     courses = knit_graph.get_courses()
     loops_to_course = {}
     if top_course_index is not None:
@@ -341,7 +381,7 @@ def position_loops(first_course_index, knit_graph, left_zero_align, re_balance_t
                     data_graph.nodes[left_loop]['x'] = data_graph.nodes[right_loop]['x']
                     data_graph.nodes[right_loop]['x'] = left_x
         new_positions = {}
-        left_side = 0
+        left_side = 0.0
         if not left_zero_align:
             left_side, left_loop = min_x_in_course(course, data_graph)
         if re_balance_to_course_width:
@@ -356,7 +396,15 @@ def position_loops(first_course_index, knit_graph, left_zero_align, re_balance_t
     return data_graph
 
 
-def adjust_y_positions_by_float_alignment(data_graph, knit_graph, loops_to_course, float_increment: float = 0.25):
+def adjust_y_positions_by_float_alignment(data_graph: DiGraph, knit_graph: Knit_Graph, loops_to_course: dict[Loop, Course], float_increment: float = 0.25) -> None:
+    """
+
+    Args:
+        data_graph:
+        knit_graph:
+        loops_to_course:
+        float_increment:
+    """
     for yarn in knit_graph.yarns:
         for u, v, front_loops in yarn.loops_in_front_of_floats():
             for fl in front_loops:
@@ -370,22 +418,22 @@ def adjust_y_positions_by_float_alignment(data_graph, knit_graph, loops_to_cours
                     data_graph.nodes[bl]['y'] += float_increment
 
 
-def collect_yarn_float_traces(data_graph, knit_graph):
+def collect_yarn_float_traces(data_graph: DiGraph, knit_graph: Knit_Graph) -> list[Any]:
     """
     :param data_graph: Collection of loop nodes to assign locations.
     :param knit_graph: The knit graph to derive loop data from.
     :return: The traces of the yarns-loop nodes for the graph
     """
     yarns_to_float_data = {}
-    for y in knit_graph.yarns.values():
-        float_data = {'x': [], 'y': []}
+    for y in knit_graph.yarns:
+        float_data: dict[str, list[float]] = {'x': [], 'y': []}
         for u, v in y.loop_graph.edges:
             float_data['x'].append(data_graph.nodes[u]['x'])
             float_data['y'].append(data_graph.nodes[u]['y'])
             float_data['x'].append(data_graph.nodes[v]['x'])
             float_data['y'].append(data_graph.nodes[v]['y'])
         yarns_to_float_data[y] = float_data
-    for y in knit_graph.yarns.values():
+    for y in knit_graph.yarns:
         float_data = {'x': [], 'y': []}
         for u in y.loop_graph.nodes:
             float_data['x'].append(data_graph.nodes[u]['x'])
@@ -402,7 +450,7 @@ def collect_yarn_float_traces(data_graph, knit_graph):
     return yarn_float_traces
 
 
-def collect_yarn_loop_traces(data_graph, knit_graph):
+def collect_yarn_loop_traces(data_graph: DiGraph, knit_graph: Knit_Graph) -> list[Any]:
     """
     :param data_graph: Collection of loop nodes to assign locations.
     :param knit_graph: The knit graph to derive loop data from.

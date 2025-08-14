@@ -1,7 +1,12 @@
 """Module containing the Loop Class"""
+from __future__ import annotations
+
+from typing import cast
+
+from knit_graphs._base_classes import _Base_Loop, _Base_Yarn
 
 
-class Loop:
+class Loop(_Base_Loop):
     """
     A class to represent a single loop structure for modeling a single loop in a knitting pattern.
 
@@ -38,7 +43,7 @@ class Loop:
         Add the parent Loop onto the stack of parent_loops
     """
 
-    def __init__(self, loop_id: int, yarn):
+    def __init__(self, loop_id: int, yarn: _Base_Yarn) -> None:
         """
         Constructs the Loop object.
 
@@ -49,16 +54,15 @@ class Loop:
         yarn : Yarn
             the Yarn variable that creates and holds this loop
         """
-        assert loop_id >= 0, f"{loop_id}: Loop_id must be non-negative"
-        self._loop_id: int = loop_id
-        self.yarn = yarn
+        super().__init__(loop_id)
+        self.yarn: _Base_Yarn = yarn
         self.parent_loops: list[Loop] = []
         self.front_floats: dict[Loop, set[Loop]] = {}
         self.back_floats: dict[Loop, set[Loop]] = {}
 
-    def add_loop_in_front_of_float(self, u, v):
+    def add_loop_in_front_of_float(self, u: Loop, v: Loop) -> None:
         """
-        Set this loop to be in front of the float between u and v
+        Set this loop to be in front of the float between u and v.
         :param u: First loop in float
         :param v: Second loop in float
         """
@@ -69,9 +73,9 @@ class Loop:
         self.back_floats[u].add(v)
         self.back_floats[v].add(u)
 
-    def add_loop_behind_float(self, u, v):
+    def add_loop_behind_float(self, u: Loop, v: Loop) -> None:
         """
-        Set this loop to be behind the float between u and v
+        Set this loop to be behind the float between u and v.
         :param u: First loop in float
         :param v: Second loop in float
         """
@@ -82,7 +86,7 @@ class Loop:
         self.front_floats[u].add(v)
         self.front_floats[v].add(u)
 
-    def is_in_front_of_float(self, u, v) -> bool:
+    def is_in_front_of_float(self, u: Loop, v: Loop) -> bool:
         """
         :param u: First loop in float.
         :param v: Second loop in float.
@@ -90,7 +94,7 @@ class Loop:
         """
         return u in self.back_floats and v in self.back_floats and v in self.back_floats[u]
 
-    def is_behind_float(self, u, v) -> bool:
+    def is_behind_float(self, u: Loop, v: Loop) -> bool:
         """
         :param u: First loop in float.
         :param v: Second loop in float.
@@ -98,17 +102,21 @@ class Loop:
         """
         return u in self.front_floats and v in self.front_floats and v in self.front_floats[u]
 
-    def prior_loop_on_yarn(self):
+    def prior_loop_on_yarn(self) -> Loop | None:
         """
-        :return: Prior loop on yarn or None if first loop on yarn
+        :return: The prior loop on yarn or None if first loop on yarn
         """
-        return self.yarn.prior_loop(self)
+        loop = self.yarn.prior_loop(self)
+        if loop is None:
+            return None
+        else:
+            return cast(Loop, loop)
 
-    def next_loop_on_yarn(self):
+    def next_loop_on_yarn(self) -> Loop:
         """
         :return: Next loop on yarn or Non if last loop on yarn
         """
-        return self.yarn.next_loop(self)
+        return cast(Loop, self.yarn.next_loop(self))
 
     def has_parent_loops(self) -> bool:
         """
@@ -116,7 +124,7 @@ class Loop:
         """
         return len(self.parent_loops) > 0
 
-    def add_parent_loop(self, parent, stack_position: int | None = None):
+    def add_parent_loop(self, parent: Loop, stack_position: int | None = None) -> None:
         """
         Adds the parent Loop onto the stack of parent_loops
         :param parent: the Loop to be added onto the stack
@@ -127,29 +135,5 @@ class Loop:
         else:
             self.parent_loops.append(parent)
 
-    @property
-    def loop_id(self) -> int:
-        """
-        :return: the id of the loop
-        """
-        return self._loop_id
-
-    def __hash__(self):
-        return self.loop_id
-
-    def __eq__(self, other):
-        return isinstance(other, Loop) and self.loop_id == other.loop_id and self.yarn == other.yarn
-
-    def __lt__(self, other):
-        assert isinstance(other, Loop)
-        return self.loop_id < other.loop_id
-
-    def __gt__(self, other):
-        assert isinstance(other, Loop)
-        return self.loop_id > other.loop_id
-
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.loop_id} on yarn {self.yarn}"
-
-    def __repr__(self):
-        return str(self.loop_id)

@@ -7,11 +7,11 @@ class Wale_Braid:
     """
         Models a knitted structure as a set of crossing wales using artin braid groups
     """
-    def __init__(self, wale_groups: list[Wale_Group], wale_words: list[Wale_Braid_Word]):
+    def __init__(self, wale_groups: list[Wale_Group], wale_words: list[Wale_Braid_Word]) -> None:
         self.wale_groups: list[Wale_Group] = wale_groups
         self.wale_words: list[Wale_Braid_Word] = wale_words
 
-    def reduce(self):
+    def reduce(self) -> None:
         """
            Modifies wale_words by removing any braid words that invert each other
         """

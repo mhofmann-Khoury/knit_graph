@@ -1,55 +1,409 @@
+# =============================================================================
+# POETRY BUILD SYSTEM CONFIGURATION
+# =============================================================================
+# This section tells Poetry how to build your package
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["poetry-core>=2.0.0,<3.0.0"]  # Poetry build backend version
+build-backend = "poetry.core.masonry.api"  # Use Poetry's build system
 
-[project]
-name = "knit-graphs"
-dynamic = ["version"]
-description = 'A graph representation of knitted structures where each loop is a node and edges represent yarn and stitch relationships.'
-homepage = "https://github.com/mhofmann-Khoury/knit_graph"
-repositor = "https://github.com/mhofmann-Khoury/knit_graph"
-readme = "README.md"
-requires-python = ">=3.11"
-license = "MIT"
-keywords = ["knit", "machine knit", "textile", "Northeastern", "ACT Lab", "fabrication"]
-authors = [
-  { name = "Megan Hofmann", email = "m.hofmann@northeastern.edu" },
+# =============================================================================
+# PROJECT METADATA AND CONFIGURATION
+# =============================================================================
+# All the information about your project that will appear on PyPI
+[tool.poetry]
+# TODO: Replace with your actual project name (use hyphens for PyPI, underscores for Python imports)
+name = "your-project-name"
+# TODO: Update version for each release (use semantic versioning: MAJOR.MINOR.PATCH)
+version = "0.0.1"
+# TODO: Write a clear, concise description of what your project does
+description = "A brief description of what your project does"
+# TODO: Replace with actual author information
+authors = ["Your Name <your.email@example.com>"]
+# TODO: Update maintainer information (can be same as authors)
+maintainers = ["Your Name <your.email@example.com>"]
+license = "MIT"                     # License type (shows up on PyPI)
+readme = "README.md"                # File to use as long description on PyPI
+# TODO: Replace with your actual project URLs
+homepage = "https://your-username.github.io/your-project-name/"
+repository = "https://github.com/your-username/your-project-name"
+documentation = "https://your-username.github.io/your-project-name/"
+# TODO: Add relevant keywords for PyPI search discoverability
+keywords = [
+    # Add more relevant keywords here
 ]
-classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
-  "Natural Language :: English",
-  "Programming Language :: Python",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: Implementation :: PyPy",
-  "Topic :: Scientific/Engineering",
+classifiers = [                     # PyPI classifiers for categorization
+    "Development Status :: 3 - Alpha",                     # TODO: Update as project matures (Alpha -> Beta -> Production/Stable)
+    "Natural Language :: English",                         # Human language
+    "Intended Audience :: Developers",                     # TODO: Add other audiences if relevant
+    "License :: OSI Approved :: MIT License",              # TODO: Update if using different license
+    "Operating System :: OS Independent",                  # Platform support
+    "Programming Language :: Python :: 3",                # Python support
+    "Programming Language :: Python :: 3.11",             # TODO: Update supported Python versions
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",             # Latest Python version
+    "Topic :: Software Development :: Libraries :: Python Modules",  # TODO: Update topic as appropriate
 ]
-dependencies = [
-  "networkx~=3.2.1",
-  "plotly~=5.22.0",
+
+# =============================================================================
+# PACKAGE STRUCTURE CONFIGURATION
+# =============================================================================
+# Tell Poetry where to find your Python packages in your repository
+packages = [
+    # TODO: Replace "your_project_name" with your actual package name (use underscores for Python)
+    {include = "your_project_name", from = "src"},
+    # This means Poetry will look for src/your_project_name/ as your main package
 ]
 
-[project.urls]
-Documentation = "https://github.com/mhofmann-Khoury/knit_graph#readme"
-Issues =        "https://github.com/mhofmann-Khoury/knit_graph/issues"
-Source =        "https://github.com/mhofmann-Khoury/knit_graph"
-
-[tool.hatch.version]
-path = "src/knit_graphs/__about__.py"
-
-[tool.hatch.build.targets.sdist]
+# =============================================================================
+# FILES TO INCLUDE/EXCLUDE IN DISTRIBUTION
+# =============================================================================
+# Include additional files when building the package for distribution
 include = [
-  "knit_graphs/*.py",
-]
-exclude = [
-  "/tests",
-  "requirements.txt",
-  ".gitignore",
+    "README.md",                    # Project description
+    "LICENSE",                      # License file
+    "docs/**/*",                    # All documentation files
+    # TODO: Add any additional files your project needs (config files, data files, etc.)
+    # "src/**/data/**/*",           # Example: include data files
+    # "src/**/templates/**/*",      # Example: include template files
 ]
 
-[tool.hatch.envs.types]
-extra-dependencies = [
-  "mypy>=1.0.0",
+# Exclude files from the distribution package (keeps package size down)
+exclude = [
+    "tests/**/*",                   # Don't include test files in distribution
+    "docs/_build/**/*",             # Don't include built documentation
+    "*.pyc",                        # No compiled Python files
+    "__pycache__/**/*",             # No Python cache directories
+    ".coverage",                    # No coverage data files
+    "htmlcov/**/*",                 # No coverage HTML reports
+    ".git/**/*",                    # No git files
+    ".github/**/*",                 # No GitHub workflow files
+    ".pytest_cache/**/*",           # No pytest cache
+    ".mypy_cache/**/*",             # No MyPy cache
+    "*.egg-info/**/*",              # No build artifacts
+    "dist/**/*",                    # No distribution files
 ]
-[tool.hatch.envs.types.scripts]
-check = "mypy --install-types --non-interactive {args:src/knit_graphs tests}"
+
+# =============================================================================
+# RUNTIME DEPENDENCIES
+# =============================================================================
+# These are packages your project needs to run in production
+[tool.poetry.dependencies]
+python = ">=3.11,<3.14"                # TODO: Update Python version range as needed
+# TODO: Add your project's runtime dependencies here
+# Examples:
+# requests = "^2.31.0"              # For HTTP requests
+# pydantic = "^2.0.0"               # For data validation
+# click = "^8.1.0"                  # For CLI applications
+# numpy = "^1.24.0"                 # For numerical computing
+# pandas = "^2.0.0"                 # For data manipulation
+
+# =============================================================================
+# OPTIONAL DEPENDENCIES (EXTRAS)
+# =============================================================================
+# Optional dependency groups that users can install with pip install "package[extra]"
+[tool.poetry.extras]
+# TODO: Define optional feature groups as needed
+# Examples:
+# cli = ["click", "rich"]           # For command-line interface features
+# viz = ["matplotlib", "plotly"]    # For visualization features
+# dev = ["pytest", "mypy"]          # For development tools (though prefer dev dependencies)
+
+# =============================================================================
+# DEVELOPMENT DEPENDENCIES
+# =============================================================================
+# These packages are only needed during development and testing
+[tool.poetry.group.dev.dependencies]
+#TODO: Add testing specific dependencies
+importlib-resources = ">=6.5.2"
+# -------------------------------------------------------------------------
+# TESTING FRAMEWORK AND PLUGINS
+# -------------------------------------------------------------------------
+coverage = "^7.3.0"                # Coverage measurement for unittest
+unittest-xml-reporting = "^3.2.0"  # XML test reporting for CI/CD
+xmlrunner = "^1.7.7"               # Alternative XML test runner for unittest
+
+# -------------------------------------------------------------------------
+# CODE QUALITY AND FORMATTING TOOLS
+# -------------------------------------------------------------------------
+isort = "^5.12.0"                  # Import statement sorter
+mypy = "^1.5.0"                    # Static type checker (catches type errors)
+pre-commit = "^3.4.0"              # Git hook framework for automated code quality checks
+
+# -------------------------------------------------------------------------
+# SECURITY AND PACKAGE VALIDATION
+# -------------------------------------------------------------------------
+safety = "^2.3.0"                  # Scans dependencies for known security vulnerabilities
+twine = "^4.0.0"                   # Tool for uploading packages to PyPI (validates before upload)
+
+# -------------------------------------------------------------------------
+# DOCUMENTATION GENERATION
+# -------------------------------------------------------------------------
+sphinx = "^7.1.0"                  # Documentation generator from docstrings
+sphinx-rtd-theme = "^1.3.0"        # Read the Docs theme (professional appearance)
+sphinx-autodoc-typehints = "^1.24.0"  # Automatically include type hints in docs
+myst-parser = "^2.0.0"             # Allows Markdown files in Sphinx documentation
+sphinx-autoapi = "^3.0.0"          # Automatically generates API documentation
+
+# -------------------------------------------------------------------------
+# DEVELOPMENT TOOLS AND UTILITIES
+# -------------------------------------------------------------------------
+ipython = "^8.14.0"                # Enhanced interactive Python shell for debugging
+rich = "^13.5.0"                   # Beautiful terminal output and debugging
+tox = "^4.11.0"                    # Test across multiple Python versions locally
+
+# -------------------------------------------------------------------------
+# RELEASE AND BUILD TOOLS
+# -------------------------------------------------------------------------
+build = "^0.10.0"                  # PEP 517 build tool (for creating distributions)
+bump2version = "^1.0.0"            # Automated version bumping tool
+
+# -------------------------------------------------------------------------
+# PLATFORM-SPECIFIC DEPENDENCIES
+# -------------------------------------------------------------------------
+# Only install on Windows systems (for colored terminal output)
+colorama = {version = "^0.4.6", markers = "sys_platform == 'win32'"}
+
+# =============================================================================
+# DOCUMENTATION-SPECIFIC DEPENDENCIES
+# =============================================================================
+# Separate dependency group for building documentation (allows selective installation)
+[tool.poetry.group.docs.dependencies]
+sphinx = "^7.1.0"                    # Documentation generator (main tool)
+sphinx-rtd-theme = "^1.3.0"         # Professional-looking theme
+sphinx-autodoc-typehints = "^1.24.0" # Automatically include type hints in docs
+sphinx-autoapi = "^3.0.0"           # Automatically generates API documentation
+myst-parser = "^2.0.0"              # Support for Markdown files in documentation
+
+# =============================================================================
+# COMMAND LINE SCRIPTS
+# =============================================================================
+# Define command-line entry points for your package
+[tool.poetry.scripts]
+# TODO: Add command-line scripts your package provides
+# Example:
+# your-command = "your_project_name.cli:main"  # Creates 'your-command' executable
+
+# =============================================================================
+# PROJECT URLS FOR PYPI
+# =============================================================================
+# Additional URLs that will be displayed on your PyPI project page
+[tool.poetry.urls]
+# TODO: Update these URLs to match your project
+#"Bug Tracker" = "https://github.com/your-username/your-project-name/issues"
+#"Changelog" = "https://github.com/your-username/your-project-name/blob/main/CHANGELOG.md"
+#"Discussions" = "https://github.com/your-username/your-project-name/discussions"
+#"Funding" = "https://github.com/sponsors/your-username"  # TODO: Remove if not using GitHub Sponsors
+
+# =============================================================================
+# ISORT IMPORT SORTER CONFIGURATION
+# =============================================================================
+# isort automatically organizes and sorts your import statements
+[tool.isort]
+profile = "black"                   # Use Black-compatible settings
+multi_line_output = 3              # Vertical hanging indent style
+line_length = 88                    # Match Black's line length
+include_trailing_comma = true       # Add trailing commas (Black-compatible)
+force_grid_wrap = 0                 # Don't force wrapping
+use_parentheses = true              # Use parentheses for multi-line imports
+ensure_newline_before_comments = true  # Clean comment spacing
+# TODO: Add your project's module to known_first_party
+known_first_party = ["your_project_name"]  # Your project modules (sorted first)
+known_third_party = []              # Third-party modules (auto-detected)
+
+# =============================================================================
+# MYPY STATIC TYPE CHECKER CONFIGURATION
+# =============================================================================
+# MyPy analyzes your code for type errors without running it
+[tool.mypy]
+python_version = "3.11"             # TODO: Update target Python version
+warn_return_any = true              # Warn when function returns 'Any' type
+warn_unused_configs = true          # Warn about unused MyPy configuration options
+disallow_untyped_defs = true        # Require type annotations on all functions
+disallow_incomplete_defs = true     # Require complete type annotations
+check_untyped_defs = true           # Type-check functions even without annotations
+disallow_untyped_decorators = true  # Require type annotations on decorators
+no_implicit_optional = true         # Don't automatically make arguments Optional
+warn_redundant_casts = true         # Warn about unnecessary type casts
+warn_unused_ignores = true          # Warn about unused # type: ignore comments
+warn_no_return = false              # Don't warn about functions that don't return
+warn_unreachable = true             # Warn about unreachable code
+strict_equality = true              # Use strict equality checks
+show_error_codes = true             # Show error codes (helpful for targeted ignoring)
+ignore_missing_imports = true       # Ignore untyped third-party library imports
+
+# Enhanced settings for better compatibility
+allow_redefinition = true           # Allow variables to be redefined with different types
+allow_untyped_globals = true        # Allow untyped global variables
+allow_subclassing_any = true        # Allow subclassing from Any types
+implicit_reexport = true            # Allow implicit re-exports from modules
+
+# Disable specific error codes that can be problematic in template projects
+disable_error_code = [
+    "attr-defined",                 # Don't error on potentially undefined attributes
+    "no-redef",                     # Don't error on redefined attributes/methods
+    "misc",                         # Disable miscellaneous errors (includes subclassing Any)
+    "type-arg",                     # Disable generic type argument errors
+    "valid-type",                   # Disable "not a valid type" errors
+    "override",                     # Disable method override signature mismatches
+]
+
+# Less strict settings for test files (unittest.TestCase methods)
+[[tool.mypy.overrides]]
+module = [
+    "tests.*",                      # Apply to all test files
+    "tests",                        # Apply to tests module
+]
+disallow_untyped_defs = false       # Allow untyped test methods in unittest.TestCase
+disallow_incomplete_defs = false    # Allow incomplete type annotations in tests
+check_untyped_defs = false          # Don't type-check untyped test methods
+warn_return_any = false             # Don't warn about returning 'Any' in tests
+warn_unused_ignores = false         # Don't warn about unused type ignores in tests
+
+# TODO: Add overrides for specific third-party libraries that may have type issues
+# Example:
+# [[tool.mypy.overrides]]
+# module = ["problematic_library.*"]
+# ignore_errors = true
+
+# =============================================================================
+# UNITTEST TESTING FRAMEWORK CONFIGURATION
+# =============================================================================
+# Configuration for Python's built-in unittest framework
+
+# Note: unittest uses discovery pattern by default
+# Test files should be named test_*.py or *_test.py
+# Test classes should inherit from unittest.TestCase
+# Test methods should start with 'test_'
+
+# Coverage integration for unittest
+# Run tests with coverage using: python -m coverage run -m unittest discover
+# Generate reports with: python -m coverage report or python -m coverage html
+
+# =============================================================================
+# COVERAGE.PY CONFIGURATION
+# =============================================================================
+# Configuration for measuring code coverage
+
+# Coverage measurement settings
+[tool.coverage.run]
+source = ["src/your_project_name"]                    # TODO: Update if your source code is in a different directory
+omit = [                           # Files to exclude from coverage measurement
+    "*/tests/*",                    # Don't measure coverage of test files
+    "*/test_*",                     # Don't measure coverage of test files
+    "*/__pycache__/*",              # Ignore Python cache files
+    "*/site-packages/*",            # Ignore installed packages
+    "*/venv/*",                     # Ignore virtual environment
+    "setup.py",                     # Ignore setup script (if present)
+    "update_project_config.py"
+]
+branch = true                       # Enable branch coverage (more comprehensive)
+
+# Coverage reporting settings
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",             # Explicit exclusion comment
+    "def __repr__",                 # String representation methods
+    "if self.debug:",               # Debug-only code
+    "if settings.DEBUG",            # Framework debug code
+    "raise AssertionError",         # Should never be reached
+    "raise NotImplementedError",    # Abstract method placeholders
+    "if 0:",                        # Never-executed debug code
+    "if __name__ == .__main__.:",   # Script entry points
+    "class .*\\bProtocol\\):",      # Protocol classes (typing)
+    "@(abc\\.)?abstractmethod",     # Abstract methods
+]
+fail_under = 80                     # TODO: Set minimum coverage percentage (fail if coverage below this)
+show_missing = true                 # Show which lines are missing coverage
+skip_covered = false                # Show covered files in report
+skip_empty = true                   # Skip empty files in report
+
+# Coverage output formats
+[tool.coverage.html]
+directory = "htmlcov"               # Directory for HTML coverage reports
+
+[tool.coverage.xml]
+output = "coverage.xml"             # XML coverage report (used by CI/CD tools)
+
+# =============================================================================
+# VERSION BUMPING CONFIGURATION
+# =============================================================================
+# Configuration for bump2version tool to automate version updates
+[tool.bumpversion]
+current_version = "0.1.0"          # TODO: Keep this in sync with tool.poetry.version
+parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
+serialize = ["{major}.{minor}.{patch}"]
+search = "{current_version}"
+replace = "{new_version}"
+commit = true                       # Automatically commit version changes
+tag = true                          # Automatically create git tags
+sign_tags = false                   # TODO: Set to true if you want to sign tags with GPG
+
+# Files where version numbers should be updated
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
+# TODO: Add other files that contain version numbers
+# [[tool.bumpversion.files]]
+# filename = "src/your_project_name/__init__.py"
+# search = '__version__ = "{current_version}"'
+# replace = '__version__ = "{new_version}"'
+
+# =============================================================================
+# WHEEL BUILDING CONFIGURATION
+# =============================================================================
+# Configuration for building wheel distributions
+[tool.wheel]
+universal = false                   # Set to true only if your package supports both Python 2 and 3
+
+# =============================================================================
+# TODO CHECKLIST FOR NEW PROJECTS
+# =============================================================================
+# When using this template, update the following:
+#
+# 1. PROJECT METADATA:
+#    - [ ] name: Update project name (use hyphens)
+#    - [ ] version: Set initial version
+#    - [ ] description: Write clear project description
+#    - [ ] authors: Add your information
+#    - [ ] maintainers: Add maintainer information
+#    - [ ] homepage: Update project homepage URL
+#    - [ ] repository: Update repository URL
+#    - [ ] documentation: Update documentation URL
+#    - [ ] keywords: Add relevant keywords
+#    - [ ] classifiers: Update development status and topics
+#
+# 2. PACKAGE STRUCTURE:
+#    - [ ] packages: Update package name and location
+#    - [ ] include: Add any additional files to include
+#    - [ ] scripts: Add command-line entry points if needed
+#
+# 3. DEPENDENCIES:
+#    - [ ] python: Update Python version requirements
+#    - [ ] dependencies: Add runtime dependencies
+#    - [ ] extras: Define optional dependency groups
+#    - [ ] dev dependencies: Add/remove development tools as needed
+#
+# 4. TOOL CONFIGURATIONS:
+#    - [ ] mypy: Update Python version and add library overrides
+#    - [ ] pytest: Update coverage source path and minimum coverage
+#    - [ ] coverage: Update source directory if needed
+#    - [ ] bumpversion: Update version file locations
+#
+# 5. FILE STRUCTURE:
+#    - [ ] Create src/your_project_name/ directory
+#    - [ ] Create tests/ directory
+#    - [ ] Create docs/ directory
+#    - [ ] Add README.md, LICENSE, CHANGELOG.md files
+#    - [ ] Add .gitignore file
+#    - [ ] Add GitHub Actions workflows
+#
+# 6. GITHUB ACTIONS:
+#    - [ ] Create .github/workflows/ci.yml for continuous integration
+#    - [ ] Create .github/workflows/release.yml for automated releases
+#    - [ ] Set up PyPI and TestPyPI tokens in GitHub secrets
+#    - [ ] Configure CI to run: python -m unittest discover tests
+#    - [ ] Configure CI to run: python -m coverage run -m unittest discover
+#
+# Remember to run 'poetry install' after updating this file!

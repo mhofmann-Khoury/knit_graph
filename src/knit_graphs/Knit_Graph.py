@@ -1,26 +1,29 @@
 """The graph structure used to represent knitted objects"""
-import networkx
+from __future__ import annotations
 
-from knit_graphs.Course import Course
-from knit_graphs.Loop import Loop
-from knit_graphs.Pull_Direction import Pull_Direction
-from knit_graphs.Yarn import Yarn
+from typing import Any, cast
+
+from knit_graphs._base_classes import _Base_Knit_Graph
 from knit_graphs.artin_wale_braids.Crossing_Direction import Crossing_Direction
 from knit_graphs.artin_wale_braids.Loop_Braid_Graph import Loop_Braid_Graph
 from knit_graphs.artin_wale_braids.Wale import Wale
 from knit_graphs.artin_wale_braids.Wale_Group import Wale_Group
+from knit_graphs.Course import Course
+from knit_graphs.Loop import Loop
+from knit_graphs.Pull_Direction import Pull_Direction
+from knit_graphs.Yarn import Yarn
 
 
-class Knit_Graph:
+class Knit_Graph(_Base_Knit_Graph):
     """
     A representation of knitted structures as connections between loops on yarns
     """
 
-    def __init__(self):
-        self.stitch_graph: networkx.DiGraph = networkx.DiGraph()
+    def __init__(self) -> None:
+        super().__init__()
         self.braid_graph: Loop_Braid_Graph = Loop_Braid_Graph()
         self._last_loop: None | Loop = None
-        self.yarns: dict[Yarn, Yarn] = {}
+        self.yarns: set[Yarn] = set()
 
     @property
     def last_loop(self) -> None | Loop:
@@ -34,9 +37,9 @@ class Knit_Graph:
         """
         :return: True if graph has loops
         """
-        return self._last_loop is not None
+        return self.last_loop is not None
 
-    def add_crossing(self, left_loop: Loop, right_loop: Loop, crossing_direction: Crossing_Direction):
+    def add_crossing(self, left_loop: Loop, right_loop: Loop, crossing_direction: Crossing_Direction) -> None:
         """
         Adds edge between loops with attribute of the crossing direction.
         :param left_loop: Loop on the left side of the crossing.
@@ -45,27 +48,27 @@ class Knit_Graph:
         """
         self.braid_graph.add_crossing(left_loop, right_loop, crossing_direction)
 
-    def add_loop(self, loop: Loop):
+    def add_loop(self, loop: Loop) -> None:
         """
         Adds a loop to the graph
         :param loop: the loop to be added in as a node in the graph
         """
         self.stitch_graph.add_node(loop)
         if loop.yarn not in self.yarns:
-            self.add_yarn(loop.yarn)
+            self.add_yarn(cast(Yarn, loop.yarn))
         if self._last_loop is None or loop > self._last_loop:
             self._last_loop = loop
 
-    def add_yarn(self, yarn: Yarn):
+    def add_yarn(self, yarn: Yarn) -> None:
         """
         Adds a yarn to the graph. Assumes that loops do not need to be added
         :param yarn: the yarn to be added to the graph structure
         """
-        self.yarns[yarn] = yarn
+        self.yarns.add(yarn)
 
     def connect_loops(self, parent_loop: Loop, child_loop: Loop,
                       pull_direction: Pull_Direction = Pull_Direction.BtF,
-                      stack_position: int | None = None):
+                      stack_position: int | None = None) -> None:
         """
         Creates a stitch-edge by connecting a parent and child loop
         :param parent_loop: the id of the parent loop to connect to this child
@@ -100,11 +103,11 @@ class Knit_Graph:
         wales = []
         for top_stitch_parent in self.stitch_graph.predecessors(last_loop):
             wale = Wale(last_loop)
-            wale.add_loop_to_beginning(top_stitch_parent, self.stitch_graph.edges[top_stitch_parent, last_loop]['pull_direction'])
+            wale.add_loop_to_beginning(top_stitch_parent, cast(Pull_Direction, self.get_pull_direction(top_stitch_parent, last_loop)))
             cur_loop = top_stitch_parent
             while len(cur_loop.parent_loops) == 1:  # stop at split for decrease or start of wale
                 cur_loop = [*self.stitch_graph.predecessors(cur_loop)][0]
-                wale.add_loop_to_beginning(cur_loop, self.stitch_graph.edges[cur_loop, wale.first_loop]['pull_direction'])
+                wale.add_loop_to_beginning(cur_loop, cast(Pull_Direction, self.get_pull_direction(cur_loop, cast(Loop, wale.first_loop))))
             wales.append(wale)
         return wales
 
@@ -116,12 +119,12 @@ class Knit_Graph:
         A course change occurs when a loop has a parent loop in the last course.
         """
         courses = []
-        course = Course()
+        course = Course(self)
         for loop in sorted([*self.stitch_graph.nodes]):
             for parent in self.stitch_graph.predecessors(loop):
                 if parent in course:  # start a new course
                     courses.append(course)
-                    course = Course()
+                    course = Course(self)
                     break
             course.add_loop(loop)
         courses.append(course)
@@ -137,28 +140,39 @@ class Knit_Graph:
                 wale_groups.update({loop: Wale_Group(wale, self) for wale in self.get_wales_ending_with_loop(loop)})
         return wale_groups
 
-    def __contains__(self, item: Loop):
+    def __contains__(self, item: Loop) -> bool:
         """
         Returns true if the item is in the graph
         :param item: the loop being checked for in the graph
         :return: true if the loop_id of item or the loop is in the graph
         """
-        return self.stitch_graph.has_node(item)
+        return bool(self.stitch_graph.has_node(item))
 
-    def get_stitch_edge(self, parent: Loop, child: Loop, stitch_property: str | None = None):
+    def get_pull_direction(self, parent: Loop, child: Loop) -> Pull_Direction | None:
+        """
+        Args:
+            parent (Loop): The parent loop of the stitch edge.
+            child (Loop): The child loop of the stitch edge.
+
+        Returns:
+            Pull_Direction | None: The pull direction of the stitch-edge between the parent and child or None if there is no edge between these loops.
+
+        """
+        edge = self.get_stitch_edge(parent, child)
+        if edge is None:
+            return None
+        else:
+            return cast(Pull_Direction, edge['pull_direction'])
+
+    def get_stitch_edge(self, parent: Loop, child: Loop) -> dict[str, Any] | None:
         """
         Shortcut to get stitch-edge data from loops or ids
-        :param stitch_property: property of edge to return
         :param parent: parent loop or id of parent loop
         :param child: child loop or id of child loop
         :return: the edge data for this stitch edge
         """
         if self.stitch_graph.has_edge(parent, child):
-            edge = self.stitch_graph.get_edge_data(parent, child)
-            if stitch_property is not None:
-                return edge[stitch_property]
-            else:
-                return edge
+            return cast(dict[str, Any], self.stitch_graph.get_edge_data(parent, child))
         else:
             return None
 
@@ -170,7 +184,7 @@ class Knit_Graph:
         successors = [*self.stitch_graph.successors(loop)]
         if len(successors) == 0:
             return None
-        return successors[0]
+        return cast(Loop, successors[0])
 
     def has_child_loop(self, loop: Loop) -> bool:
         """
@@ -182,6 +196,6 @@ class Knit_Graph:
     def is_terminal_loop(self, loop: Loop) -> bool:
         """
         :param loop:
-        :return: True if loop has no child
+        :return: True if loop has no child and terminates a wale.
         """
         return not self.has_child_loop(loop)

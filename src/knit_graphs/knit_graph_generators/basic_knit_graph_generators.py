@@ -1,9 +1,8 @@
 """Module of functions that generate basic knit graph swatches."""
-
+from knit_graphs.artin_wale_braids.Crossing_Direction import Crossing_Direction
 from knit_graphs.Knit_Graph import Knit_Graph
 from knit_graphs.Pull_Direction import Pull_Direction
 from knit_graphs.Yarn import Yarn
-from knit_graphs.artin_wale_braids.Crossing_Direction import Crossing_Direction
 
 
 def co_loops(width: int) -> tuple[Knit_Graph, Yarn]:
@@ -12,9 +11,9 @@ def co_loops(width: int) -> tuple[Knit_Graph, Yarn]:
     :return: Knit Graph with one course of length width
     """
     knit_graph = Knit_Graph()
-    yarn = Yarn()
+    yarn = Yarn(knit_graph=knit_graph)
     for _ in range(0, width):
-        _loop = yarn.make_loop_on_end(knit_graph)
+        _loop = yarn.make_loop_on_end()
     return knit_graph, yarn
 
 
@@ -25,11 +24,11 @@ def jersey_swatch(width: int, height: int) -> Knit_Graph:
     :return: Generate a Knitgraph of width and height with all knit stitches in a sheet structure
     """
     knit_graph, yarn = co_loops(width)
-    last_course = knit_graph.get_courses()[0]
+    last_course = list(knit_graph.get_courses()[0])
     for _ in range(0, height):
         next_course = []
         for parent_loop in reversed(last_course):
-            child_loop = yarn.make_loop_on_end(knit_graph)
+            child_loop = yarn.make_loop_on_end()
             knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.BtF)
             next_course.append(child_loop)
         last_course = next_course
@@ -45,7 +44,7 @@ def jersey_tube(tube_width: int, height: int) -> Knit_Graph:
     knit_graph, yarn = co_loops(tube_width * 2)
     last_course = [*knit_graph.get_courses()[0]]
 
-    def _set_tube_floats():
+    def _set_tube_floats() -> None:
         front_loops = last_course[0:tube_width]
         back_loops = last_course[tube_width:]
         for first_front, second_front, back in zip(front_loops[0:-1], front_loops[1:], reversed(back_loops)):
@@ -55,7 +54,7 @@ def jersey_tube(tube_width: int, height: int) -> Knit_Graph:
 
     _set_tube_floats()
     for _ in range(0, height):
-        next_course = [yarn.make_loop_on_end(knit_graph) for _p in last_course]
+        next_course = [yarn.make_loop_on_end() for _p in last_course]
         for parent_loop, child_loop in zip(last_course, next_course):
             knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.BtF)
         last_course = next_course
@@ -74,7 +73,7 @@ def kp_rib_swatch(width: int, height: int) -> Knit_Graph:
     next_course = []
     next_pull = Pull_Direction.BtF
     for parent_loop in reversed(last_course):
-        child_loop = yarn.make_loop_on_end(knit_graph)
+        child_loop = yarn.make_loop_on_end()
         knit_graph.connect_loops(parent_loop, child_loop, pull_direction=next_pull)
         next_pull = next_pull.opposite()
         next_course.append(child_loop)
@@ -83,8 +82,9 @@ def kp_rib_swatch(width: int, height: int) -> Knit_Graph:
         next_course = []
         for parent_loop in reversed(last_course):
             grand_parent = parent_loop.parent_loops[0]
-            parent_pull = knit_graph.get_stitch_edge(grand_parent, parent_loop, "pull_direction")
-            child_loop = yarn.make_loop_on_end(knit_graph)
+            parent_pull = knit_graph.get_pull_direction(grand_parent, parent_loop)
+            assert isinstance(parent_pull, Pull_Direction)
+            child_loop = yarn.make_loop_on_end()
             knit_graph.connect_loops(parent_loop, child_loop, pull_direction=parent_pull)
             next_course.append(child_loop)
         last_course = next_course
@@ -102,7 +102,7 @@ def seed_swatch(width: int, height: int) -> Knit_Graph:
     next_course = []
     next_pull = Pull_Direction.BtF
     for parent_loop in reversed(last_course):
-        child_loop = yarn.make_loop_on_end(knit_graph)
+        child_loop = yarn.make_loop_on_end()
         knit_graph.connect_loops(parent_loop, child_loop, pull_direction=next_pull)
         next_pull = next_pull.opposite()
         next_course.append(child_loop)
@@ -111,15 +111,16 @@ def seed_swatch(width: int, height: int) -> Knit_Graph:
         next_course = []
         for parent_loop in reversed(last_course):
             grand_parent = parent_loop.parent_loops[0]
-            parent_pull = knit_graph.get_stitch_edge(grand_parent, parent_loop, "pull_direction")
-            child_loop = yarn.make_loop_on_end(knit_graph)
+            parent_pull = knit_graph.get_pull_direction(grand_parent, parent_loop)
+            assert isinstance(parent_pull, Pull_Direction)
+            child_loop = yarn.make_loop_on_end()
             knit_graph.connect_loops(parent_loop, child_loop, pull_direction=parent_pull.opposite())
             next_course.append(child_loop)
         last_course = next_course
     return knit_graph
 
 
-def kp_mesh_decrease_left_swatch(width, height) -> Knit_Graph:
+def kp_mesh_decrease_left_swatch(width: int, height: int) -> Knit_Graph:
     """
     :param width: number of stitches per course
     :param height: number of loops per course
@@ -134,7 +135,7 @@ def kp_mesh_decrease_left_swatch(width, height) -> Knit_Graph:
     next_course = []
     next_pull = Pull_Direction.BtF
     for parent_loop in reversed(last_course):
-        child_loop = yarn.make_loop_on_end(knit_graph)
+        child_loop = yarn.make_loop_on_end()
         knit_graph.connect_loops(parent_loop, child_loop, pull_direction=next_pull)
         next_pull = next_pull.opposite()
         next_course.append(child_loop)
@@ -142,9 +143,9 @@ def kp_mesh_decrease_left_swatch(width, height) -> Knit_Graph:
     for _ in range(1, height):
         next_course = []
         for parent_loop in reversed(last_course):
-            child_loop = yarn.make_loop_on_end(knit_graph)
+            child_loop = yarn.make_loop_on_end()
             grand_parent = parent_loop.parent_loops[0]
-            parent_pull = knit_graph.get_stitch_edge(grand_parent, parent_loop, "pull_direction")
+            parent_pull = knit_graph.get_pull_direction(grand_parent, parent_loop)
             if parent_pull is Pull_Direction.BtF:  # knits stay in decrease at bottom of stack
                 knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.BtF, stack_position=0)
                 prior_parent = yarn.prior_loop(parent_loop)
@@ -154,7 +155,7 @@ def kp_mesh_decrease_left_swatch(width, height) -> Knit_Graph:
         last_course = next_course
         next_course = []
         for parent_loop in reversed(last_course):
-            child_loop = yarn.make_loop_on_end(knit_graph)
+            child_loop = yarn.make_loop_on_end()
             if len(parent_loop.parent_loops) == 0:
                 knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.FtB)
             else:
@@ -164,7 +165,7 @@ def kp_mesh_decrease_left_swatch(width, height) -> Knit_Graph:
     return knit_graph
 
 
-def kp_mesh_decrease_right_swatch(width, height) -> Knit_Graph:
+def kp_mesh_decrease_right_swatch(width: int, height: int) -> Knit_Graph:
     """
     :param width: number of stitches per course
     :param height: number of loops per course
@@ -179,7 +180,7 @@ def kp_mesh_decrease_right_swatch(width, height) -> Knit_Graph:
     next_course = []
     next_pull = Pull_Direction.BtF
     for parent_loop in reversed(last_course):
-        child_loop = yarn.make_loop_on_end(knit_graph)
+        child_loop = yarn.make_loop_on_end()
         knit_graph.connect_loops(parent_loop, child_loop, pull_direction=next_pull)
         next_pull = next_pull.opposite()
         next_course.append(child_loop)
@@ -187,9 +188,9 @@ def kp_mesh_decrease_right_swatch(width, height) -> Knit_Graph:
     for _ in range(1, height):
         next_course = []
         for parent_loop in reversed(last_course):
-            child_loop = yarn.make_loop_on_end(knit_graph)
+            child_loop = yarn.make_loop_on_end()
             grand_parent = parent_loop.parent_loops[0]
-            parent_pull = knit_graph.get_stitch_edge(grand_parent, parent_loop, "pull_direction")
+            parent_pull = knit_graph.get_pull_direction(grand_parent, parent_loop)
             if parent_pull is Pull_Direction.BtF:  # knits stay in decrease at bottom of stack
                 knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.BtF, stack_position=0)
                 next_parent = yarn.next_loop(parent_loop)
@@ -199,7 +200,7 @@ def kp_mesh_decrease_right_swatch(width, height) -> Knit_Graph:
         last_course = next_course
         next_course = []
         for parent_loop in reversed(last_course):
-            child_loop = yarn.make_loop_on_end(knit_graph)
+            child_loop = yarn.make_loop_on_end()
             if len(parent_loop.parent_loops) == 0:
                 knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.FtB)
             else:
@@ -209,7 +210,7 @@ def kp_mesh_decrease_right_swatch(width, height) -> Knit_Graph:
     return knit_graph
 
 
-def twist_cable(width, height) -> Knit_Graph:
+def twist_cable(width: int, height: int) -> Knit_Graph:
     """
     :param width: number of stitches per course
     :param height: number of loops per course
@@ -225,13 +226,13 @@ def twist_cable(width, height) -> Knit_Graph:
     next_course = []
     pull_directions = [Pull_Direction.FtB, Pull_Direction.BtF, Pull_Direction.BtF, Pull_Direction.FtB]
     for i, parent_loop in enumerate(reversed(last_course)):
-        child_loop = yarn.make_loop_on_end(knit_graph)
+        child_loop = yarn.make_loop_on_end()
         knit_graph.connect_loops(parent_loop, child_loop, pull_direction=pull_directions[i % 4])
         next_course.append(child_loop)
     last_course = next_course
     crossing = Crossing_Direction.Over_Right
     for r in range(1, height):
-        next_course = [yarn.make_loop_on_end(knit_graph) for _ in last_course]
+        next_course = [yarn.make_loop_on_end() for _ in last_course]
         for i, parent_loop in enumerate(reversed(last_course)):
             if r % 2 == 0 or i % 4 == 0 or i % 4 == 3:  # not cable row (even) or in purl wale
                 child_loop = next_course[i]
