@@ -1,10 +1,12 @@
-# Configuration file for the Sphinx documentation builder.
-# =============================================================================
-# SPHINX DOCUMENTATION CONFIGURATION
-# =============================================================================
-# This file configures how Sphinx generates documentation from your Python code.
-# For the full list of built-in configuration values, see:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
+"""
+    Configuration file for the Sphinx documentation builder.
+    =============================================================================
+    SPHINX DOCUMENTATION CONFIGURATION
+    =============================================================================
+    This file configures how Sphinx generates documentation from your Python code.
+    For the full list of built-in configuration values, see:
+    https://www.sphinx-doc.org/en/master/usage/configuration.html
+"""
 
 import os
 import sys
