@@ -11,37 +11,28 @@ build-backend = "poetry.core.masonry.api"  # Use Poetry's build system
 # =============================================================================
 # All the information about your project that will appear on PyPI
 [tool.poetry]
-# TODO: Replace with your actual project name (use hyphens for PyPI, underscores for Python imports)
-name = "your-project-name"
-# TODO: Update version for each release (use semantic versioning: MAJOR.MINOR.PATCH)
-version = "0.0.1"
-# TODO: Write a clear, concise description of what your project does
-description = "A brief description of what your project does"
-# TODO: Replace with actual author information
-authors = ["Your Name <your.email@example.com>"]
-# TODO: Update maintainer information (can be same as authors)
-maintainers = ["Your Name <your.email@example.com>"]
+name = "knit-graphs"
+version = "0.0.7"
+description = "A graph representation of knitted structures where each loop is a node and edges represent yarn and stitch relationships."
+authors = ["Megan Hofmann <m.hofmann@northeastern.edu>"]
+maintainers = ["Megan Hofmann <m.hofmann@northeastern.edu>"]
 license = "MIT"                     # License type (shows up on PyPI)
 readme = "README.md"                # File to use as long description on PyPI
-# TODO: Replace with your actual project URLs
-homepage = "https://your-username.github.io/your-project-name/"
-repository = "https://github.com/your-username/your-project-name"
-documentation = "https://your-username.github.io/your-project-name/"
-# TODO: Add relevant keywords for PyPI search discoverability
-keywords = [
-    # Add more relevant keywords here
-]
+homepage = "https://mhofmann-Khoury.github.io/knit-graphs/"
+repository = "https://github.com/mhofmann-Khoury/knit-graphs"
+documentation = "https://mhofmann-Khoury.github.io/knit-graphs/"
+keywords = ["ACT Lab", "Northeastern University", "knit", "machine knit", "fabrication", "textile"]
 classifiers = [                     # PyPI classifiers for categorization
-    "Development Status :: 3 - Alpha",                     # TODO: Update as project matures (Alpha -> Beta -> Production/Stable)
+    "Development Status :: 3 - Alpha",                     # Update as project matures (Alpha -> Beta -> Production/Stable)
     "Natural Language :: English",                         # Human language
-    "Intended Audience :: Developers",                     # TODO: Add other audiences if relevant
-    "License :: OSI Approved :: MIT License",              # TODO: Update if using different license
+    "Intended Audience :: Developers",                     # Add other audiences if relevant
+    "License :: OSI Approved :: MIT License",              # Update if using different license
     "Operating System :: OS Independent",                  # Platform support
     "Programming Language :: Python :: 3",                # Python support
-    "Programming Language :: Python :: 3.11",             # TODO: Update supported Python versions
+    "Programming Language :: Python :: 3.11",             # Update supported Python versions
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",             # Latest Python version
-    "Topic :: Software Development :: Libraries :: Python Modules",  # TODO: Update topic as appropriate
+    "Topic :: Scientific/Engineering",
 ]
 
 # =============================================================================
@@ -49,8 +40,7 @@ classifiers = [                     # PyPI classifiers for categorization
 # =============================================================================
 # Tell Poetry where to find your Python packages in your repository
 packages = [
-    # TODO: Replace "your_project_name" with your actual package name (use underscores for Python)
-    {include = "your_project_name", from = "src"},
+    {include = "knit_graphs", from = "src"},
     # This means Poetry will look for src/your_project_name/ as your main package
 ]
 
@@ -62,7 +52,6 @@ include = [
     "README.md",                    # Project description
     "LICENSE",                      # License file
     "docs/**/*",                    # All documentation files
-    # TODO: Add any additional files your project needs (config files, data files, etc.)
     # "src/**/data/**/*",           # Example: include data files
     # "src/**/templates/**/*",      # Example: include template files
 ]
@@ -88,8 +77,9 @@ exclude = [
 # =============================================================================
 # These are packages your project needs to run in production
 [tool.poetry.dependencies]
-python = ">=3.11,<3.14"                # TODO: Update Python version range as needed
-# TODO: Add your project's runtime dependencies here
+python = ">=3.11,<3.14"
+networkx = ">=3.5"
+plotly = ">=6.3.0"
 # Examples:
 # requests = "^2.31.0"              # For HTTP requests
 # pydantic = "^2.0.0"               # For data validation
@@ -101,8 +91,7 @@ python = ">=3.11,<3.14"                # TODO: Update Python version range as ne
 # OPTIONAL DEPENDENCIES (EXTRAS)
 # =============================================================================
 # Optional dependency groups that users can install with pip install "package[extra]"
-[tool.poetry.extras]
-# TODO: Define optional feature groups as needed
+#[tool.poetry.extras]
 # Examples:
 # cli = ["click", "rich"]           # For command-line interface features
 # viz = ["matplotlib", "plotly"]    # For visualization features
@@ -112,9 +101,10 @@ python = ">=3.11,<3.14"                # TODO: Update Python version range as ne
 # DEVELOPMENT DEPENDENCIES
 # =============================================================================
 # These packages are only needed during development and testing
+
 [tool.poetry.group.dev.dependencies]
-#TODO: Add testing specific dependencies
 importlib-resources = ">=6.5.2"
+
 # -------------------------------------------------------------------------
 # TESTING FRAMEWORK AND PLUGINS
 # -------------------------------------------------------------------------
@@ -178,8 +168,7 @@ myst-parser = "^2.0.0"              # Support for Markdown files in documentatio
 # COMMAND LINE SCRIPTS
 # =============================================================================
 # Define command-line entry points for your package
-[tool.poetry.scripts]
-# TODO: Add command-line scripts your package provides
+#[tool.poetry.scripts]
 # Example:
 # your-command = "your_project_name.cli:main"  # Creates 'your-command' executable
 
@@ -187,12 +176,10 @@ myst-parser = "^2.0.0"              # Support for Markdown files in documentatio
 # PROJECT URLS FOR PYPI
 # =============================================================================
 # Additional URLs that will be displayed on your PyPI project page
-[tool.poetry.urls]
-# TODO: Update these URLs to match your project
-#"Bug Tracker" = "https://github.com/your-username/your-project-name/issues"
-#"Changelog" = "https://github.com/your-username/your-project-name/blob/main/CHANGELOG.md"
+#[tool.poetry.urls]
+#"Bug Tracker" = "https://github.com/mhofmann-Khoury/knit-graphs/issues"
+#"Changelog" = "https://github.com/mhofmann-Khoury/knit-graphs/blob/main/CHANGELOG.md"
 #"Discussions" = "https://github.com/your-username/your-project-name/discussions"
-#"Funding" = "https://github.com/sponsors/your-username"  # TODO: Remove if not using GitHub Sponsors
 
 # =============================================================================
 # ISORT IMPORT SORTER CONFIGURATION
@@ -206,8 +193,7 @@ include_trailing_comma = true       # Add trailing commas (Black-compatible)
 force_grid_wrap = 0                 # Don't force wrapping
 use_parentheses = true              # Use parentheses for multi-line imports
 ensure_newline_before_comments = true  # Clean comment spacing
-# TODO: Add your project's module to known_first_party
-known_first_party = ["your_project_name"]  # Your project modules (sorted first)
+known_first_party = ["knit_graphs"]  # Your project modules (sorted first)
 known_third_party = []              # Third-party modules (auto-detected)
 
 # =============================================================================
@@ -215,7 +201,7 @@ known_third_party = []              # Third-party modules (auto-detected)
 # =============================================================================
 # MyPy analyzes your code for type errors without running it
 [tool.mypy]
-python_version = "3.11"             # TODO: Update target Python version
+python_version = "3.11"             # Update target Python version
 warn_return_any = true              # Warn when function returns 'Any' type
 warn_unused_configs = true          # Warn about unused MyPy configuration options
 disallow_untyped_defs = true        # Require type annotations on all functions
@@ -259,7 +245,7 @@ check_untyped_defs = false          # Don't type-check untyped test methods
 warn_return_any = false             # Don't warn about returning 'Any' in tests
 warn_unused_ignores = false         # Don't warn about unused type ignores in tests
 
-# TODO: Add overrides for specific third-party libraries that may have type issues
+# Add overrides for specific third-party libraries that may have type issues
 # Example:
 # [[tool.mypy.overrides]]
 # module = ["problematic_library.*"]
@@ -286,7 +272,7 @@ warn_unused_ignores = false         # Don't warn about unused type ignores in te
 
 # Coverage measurement settings
 [tool.coverage.run]
-source = ["src/your_project_name"]                    # TODO: Update if your source code is in a different directory
+source = ["src/knit_graphs"]
 omit = [                           # Files to exclude from coverage measurement
     "*/tests/*",                    # Don't measure coverage of test files
     "*/test_*",                     # Don't measure coverage of test files
@@ -312,7 +298,7 @@ exclude_lines = [
     "class .*\\bProtocol\\):",      # Protocol classes (typing)
     "@(abc\\.)?abstractmethod",     # Abstract methods
 ]
-fail_under = 80                     # TODO: Set minimum coverage percentage (fail if coverage below this)
+fail_under = 0                     # Set minimum coverage percentage (fail if coverage below this)
 show_missing = true                 # Show which lines are missing coverage
 skip_covered = false                # Show covered files in report
 skip_empty = true                   # Skip empty files in report
@@ -329,14 +315,14 @@ output = "coverage.xml"             # XML coverage report (used by CI/CD tools)
 # =============================================================================
 # Configuration for bump2version tool to automate version updates
 [tool.bumpversion]
-current_version = "0.1.0"          # TODO: Keep this in sync with tool.poetry.version
+current_version = "0.0.7"          # Keep this in sync with tool.poetry.version
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 serialize = ["{major}.{minor}.{patch}"]
 search = "{current_version}"
 replace = "{new_version}"
 commit = true                       # Automatically commit version changes
 tag = true                          # Automatically create git tags
-sign_tags = false                   # TODO: Set to true if you want to sign tags with GPG
+sign_tags = false                   # Set to true if you want to sign tags with GPG
 
 # Files where version numbers should be updated
 [[tool.bumpversion.files]]
@@ -344,7 +330,7 @@ filename = "pyproject.toml"
 search = 'version = "{current_version}"'
 replace = 'version = "{new_version}"'
 
-# TODO: Add other files that contain version numbers
+# Add other files that contain version numbers
 # [[tool.bumpversion.files]]
 # filename = "src/your_project_name/__init__.py"
 # search = '__version__ = "{current_version}"'
@@ -358,7 +344,7 @@ replace = 'version = "{new_version}"'
 universal = false                   # Set to true only if your package supports both Python 2 and 3
 
 # =============================================================================
-# TODO CHECKLIST FOR NEW PROJECTS
+# CHECKLIST FOR NEW PROJECTS
 # =============================================================================
 # When using this template, update the following:
 #

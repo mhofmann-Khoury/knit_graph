@@ -18,7 +18,7 @@ repos:
   # ==========================================================================
   # General file hygiene and common issues
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0  # TODO: Update to latest version periodically
+    rev: v4.5.0  # Update to latest version periodically
     hooks:
       - id: trailing-whitespace        # Remove trailing whitespace from all files
         args: [--markdown-linebreak-ext=md]  # Preserve markdown line breaks
@@ -39,7 +39,7 @@ repos:
   # ==========================================================================
   # isort: Automatically sort and organize import statements
   - repo: https://github.com/pycqa/isort
-    rev: 5.12.0  # TODO: Update to latest version periodically
+    rev: 5.12.0  # Update to latest version periodically
     hooks:
       - id: isort
         name: isort
@@ -59,7 +59,6 @@ repos:
         language: system
         types: [python]
         args: [--config-file=pyproject.toml, src/]  # Explicitly specify src/ directory
-        # TODO: Update the source directory if not using src/ layout
         exclude: ^(docs/|tests/)      # Skip documentation and test files
         pass_filenames: false         # Run on entire codebase, not individual files
         require_serial: true          # Don't run in parallel (can cause issues)
@@ -73,7 +72,7 @@ default_install_hook_types: [pre-commit, pre-push]  # Install for both commit an
 default_stages: [commit]            # Run hooks on commit by default
 
 # Fail fast: stop on first hook failure (useful for development)
-fail_fast: false                    # TODO: Set to true if you want to stop on first failure
+fail_fast: false                    #  Set to true if you want to stop on first failure
 
 # =============================================================================
 # EXCLUSION PATTERNS
@@ -123,7 +122,7 @@ exclude: |
 #   This ensures the same quality checks run locally and in CI
 
 # =============================================================================
-# TODO CHECKLIST FOR NEW PROJECTS
+#  CHECKLIST FOR NEW PROJECTS
 # =============================================================================
 # When using this template, customize the following:
 #

@@ -1,7 +1,5 @@
-.. TODO: Update the title and content below for your project
-
-Your Project Name Documentation
-================================
+knit-graphs
+===========
 
 .. TODO: Add a brief description of your project
 

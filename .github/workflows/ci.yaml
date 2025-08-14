@@ -37,11 +37,9 @@ on:
 # WORKFLOW-LEVEL ENVIRONMENT VARIABLES
 # =============================================================================
 env:
-  # TODO: Update these for your project
   PYTHON_VERSION: "3.11"           # Primary Python version for most jobs
   POETRY_VERSION: "1.8.3"          # Updated Poetry version
-  # TODO: Update package name (use underscores for Python imports)
-  PACKAGE_NAME: "your_project_name"
+  PACKAGE_NAME: "knit_graphs"
 
 # =============================================================================
 # WORKFLOW PERMISSIONS
@@ -107,7 +105,6 @@ jobs:
     strategy:
       fail-fast: false              # Continue testing other versions if one fails
       matrix:
-        # TODO: Update Python versions as needed
         python-version: ["3.11", "3.12", "3.13"]
         os: [ubuntu-latest, windows-latest, macos-latest]  # Test on all major platforms
 
@@ -320,7 +317,7 @@ concurrency:
   cancel-in-progress: true          # Cancel previous runs when new commits are pushed
 
 # =============================================================================
-# TODO CHECKLIST FOR NEW PROJECTS
+# CHECKLIST FOR NEW PROJECTS
 # =============================================================================
 # When using this template, customize the following:
 #

@@ -47,8 +47,7 @@ on:
 env:
   PYTHON_VERSION: "3.11"           # Python version for building
   POETRY_VERSION: "1.7.1"          # Poetry version to use
-  # TODO: Update package name (use underscores for Python imports)
-  PACKAGE_NAME: "your_project_name"
+  PACKAGE_NAME: "knit_graphs"
 
 # =============================================================================
 # WORKFLOW PERMISSIONS
@@ -323,15 +322,9 @@ jobs:
           echo "Version: ${{ needs.validate-release.outputs.version }}"
           echo "Target: TestPyPI"
 
-      # TODO: Add additional post-release actions as needed:
-      # - Update documentation website
-      # - Send notifications to team
-      # - Create follow-up issues
-      # - Update changelog
-      # - Trigger downstream builds
 
 # =============================================================================
-# TODO CHECKLIST FOR RELEASE SETUP
+#  CHECKLIST FOR RELEASE SETUP
 # =============================================================================
 # When using this template, complete the following setup:
 #

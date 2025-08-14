@@ -232,7 +232,7 @@ jobs:
           echo "Check the job output above for any broken links"
 
 # =============================================================================
-# TODO CHECKLIST FOR DOCUMENTATION SETUP
+# CHECKLIST FOR DOCUMENTATION SETUP
 # =============================================================================
 # When using this template, complete the following setup:
 #
