@@ -666,7 +666,6 @@ def visualize_knit_graph(knit_graph: Knit_Graph, first_course_index: int = 0, to
     """Generate and display a plotly visualization of the given knit graph with specified configuration.
 
     Args:
-        show_figure:
         knit_graph (Knit_Graph): The knit graph to visualize.
         first_course_index (int): Index of the first (bottom) course to include in the visualization. Defaults to 0.
         top_course_index (int | None): Index of the last (top) course to include in the visualization. If None, visualizes up to the top of the knit graph.
