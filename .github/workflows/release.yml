@@ -165,7 +165,6 @@ jobs:
         run: |
           echo "🧪 Running complete test suite before release..."
           poetry run coverage run -m unittest discover tests
-          poetry run coverage report
 
       - name: Run pre-commit hooks
         run: |
