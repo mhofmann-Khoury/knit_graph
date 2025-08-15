@@ -1,7 +1,14 @@
 from unittest import TestCase
 
-from knit_graphs.knit_graph_generators.basic_knit_graph_generators import kp_mesh_decrease_left_swatch, kp_mesh_decrease_right_swatch, twist_cable, jersey_tube, jersey_swatch, kp_rib_swatch, \
-    seed_swatch
+from knit_graphs.basic_knit_graph_generators import (
+    jersey_swatch,
+    jersey_tube,
+    kp_mesh_decrease_left_swatch,
+    kp_mesh_decrease_right_swatch,
+    kp_rib_swatch,
+    seed_swatch,
+    twist_cable,
+)
 
 
 class TestKnit_Graph(TestCase):

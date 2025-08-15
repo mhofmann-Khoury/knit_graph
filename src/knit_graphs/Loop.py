@@ -1,4 +1,8 @@
-"""Module containing the Loop Class"""
+"""Module containing the Loop Class.
+
+This module defines the Loop class which represents individual loops in a knitting pattern.
+Loops are the fundamental building blocks of knitted structures and maintain relationships with parent loops, yarn connections, and float positions.
+"""
 from __future__ import annotations
 
 from typing import cast
@@ -7,52 +11,24 @@ from knit_graphs._base_classes import _Base_Loop, _Base_Yarn
 
 
 class Loop(_Base_Loop):
-    """
-    A class to represent a single loop structure for modeling a single loop in a knitting pattern.
+    """A class to represent a single loop structure for modeling a single loop in a knitting pattern.
+
+    The Loop class manages yarn relationships, parent-child connections for stitches, and float positioning for complex knitting structures.
+    Each loop maintains its position in the yarn sequence and its relationships to other loops through stitch connections and floating elements.
 
     Attributes:
-    -----------
-    _loop_id : int
-        a unique identifier for the loop
-    yarn : Yarn
-        the Yarn variable that creates and holds this loop
-    parent_loops : list
-        the list of parent loops
-    front_floats : dict
-        a dictionary of loops in front of the float
-    back_floats : dict
-        a dictionary of loops behind the float
-
-    Methods:
-    -----------
-    add_loop_in_front_of_float(u, v)
-        Set this loop to be in front of the float between u and v
-    add_loop_behind_float(u, v)
-        Set this loop to be behind the float between u and v
-    is_in_front_of_float(u, v)
-        Check if the float between u and v is in front of this loop
-    is_behind_float(u, v)
-        Check if the float between u and v is behind this loop
-    prior_loop_on_yarn()
-        Return the prior loop on yarn or None if first loop on yarn
-    next_loop_on_yarn()
-        Return the next loop on yarn or None if last loop on yarn
-    has_parent_loops()
-        Check if loop has stitch-edge parents
-    add_parent_loop(parent, stack_position)
-        Add the parent Loop onto the stack of parent_loops
+        yarn (Yarn): The yarn that creates and holds this loop.
+        parent_loops (list[Loop]): The list of parent loops that this loop is connected to through stitch edges.
+        front_floats (dict[Loop, set[Loop]]): A dictionary tracking loops that this loop floats in front of.
+        back_floats (dict[Loop, set[Loop]]): A dictionary tracking loops that this loop floats behind.
     """
 
     def __init__(self, loop_id: int, yarn: _Base_Yarn) -> None:
-        """
-        Constructs the Loop object.
+        """Construct a Loop object with the specified identifier and yarn.
 
-        Parameters:
-        -----------
-        loop_id : int
-            a unique identifier for the loop, must be non-negative
-        yarn : Yarn
-            the Yarn variable that creates and holds this loop
+        Args:
+            loop_id (int): A unique identifier for the loop, must be non-negative.
+            yarn (_Base_Yarn): The yarn that creates and holds this loop.
         """
         super().__init__(loop_id)
         self.yarn: _Base_Yarn = yarn
@@ -61,10 +37,13 @@ class Loop(_Base_Loop):
         self.back_floats: dict[Loop, set[Loop]] = {}
 
     def add_loop_in_front_of_float(self, u: Loop, v: Loop) -> None:
-        """
-        Set this loop to be in front of the float between u and v.
-        :param u: First loop in float
-        :param v: Second loop in float
+        """Set this loop to be in front of the float between loops u and v.
+
+        This method establishes that this loop passes in front of a floating yarn segment between two other loops.
+
+        Args:
+            u (Loop): The first loop in the float pair.
+            v (Loop): The second loop in the float pair.
         """
         if u not in self.back_floats:
             self.back_floats[u] = set()
@@ -74,10 +53,13 @@ class Loop(_Base_Loop):
         self.back_floats[v].add(u)
 
     def add_loop_behind_float(self, u: Loop, v: Loop) -> None:
-        """
-        Set this loop to be behind the float between u and v.
-        :param u: First loop in float
-        :param v: Second loop in float
+        """Set this loop to be behind the float between loops u and v.
+
+        This method establishes that this loop passes behind a floating yarn segment between two other loops.
+
+        Args:
+            u (Loop): The first loop in the float pair.
+            v (Loop): The second loop in the float pair.
         """
         if u not in self.front_floats:
             self.front_floats[u] = set()
@@ -87,24 +69,34 @@ class Loop(_Base_Loop):
         self.front_floats[v].add(u)
 
     def is_in_front_of_float(self, u: Loop, v: Loop) -> bool:
-        """
-        :param u: First loop in float.
-        :param v: Second loop in float.
-        :return: True if the float between u and v is in front of this loop.
+        """Check if this loop is positioned in front of the float between loops u and v.
+
+        Args:
+            u (Loop): The first loop in the float pair.
+            v (Loop): The second loop in the float pair.
+
+        Returns:
+            bool: True if the float between u and v passes behind this loop, False otherwise.
         """
         return u in self.back_floats and v in self.back_floats and v in self.back_floats[u]
 
     def is_behind_float(self, u: Loop, v: Loop) -> bool:
-        """
-        :param u: First loop in float.
-        :param v: Second loop in float.
-        :return: True if the float between u and v is behind this loop.
+        """Check if this loop is positioned behind the float between loops u and v.
+
+        Args:
+            u (Loop): The first loop in the float pair.
+            v (Loop): The second loop in the float pair.
+
+        Returns:
+            bool: True if the float between u and v passes in front of this loop, False otherwise.
         """
         return u in self.front_floats and v in self.front_floats and v in self.front_floats[u]
 
     def prior_loop_on_yarn(self) -> Loop | None:
-        """
-        :return: The prior loop on yarn or None if first loop on yarn
+        """Get the loop that precedes this loop on the same yarn.
+
+        Returns:
+            Loop | None: The prior loop on the yarn, or None if this is the first loop on the yarn.
         """
         loop = self.yarn.prior_loop(self)
         if loop is None:
@@ -113,22 +105,27 @@ class Loop(_Base_Loop):
             return cast(Loop, loop)
 
     def next_loop_on_yarn(self) -> Loop:
-        """
-        :return: Next loop on yarn or Non if last loop on yarn
+        """Get the loop that follows this loop on the same yarn.
+
+        Returns:
+            Loop: The next loop on the yarn, or None if this is the last loop on the yarn.
         """
         return cast(Loop, self.yarn.next_loop(self))
 
     def has_parent_loops(self) -> bool:
-        """
-        :return: True if loop has stitch-edge parents
+        """Check if this loop has any parent loops connected through stitch edges.
+
+        Returns:
+            bool: True if the loop has stitch-edge parents, False otherwise.
         """
         return len(self.parent_loops) > 0
 
     def add_parent_loop(self, parent: Loop, stack_position: int | None = None) -> None:
-        """
-        Adds the parent Loop onto the stack of parent_loops
-        :param parent: the Loop to be added onto the stack
-        :param stack_position: The position to insert the parent into, by default add on top of the stack
+        """Add a parent loop to this loop's parent stack.
+
+        Args:
+            parent (Loop): The loop to be added as a parent to this loop.
+            stack_position (int | None, optional): The position to insert the parent into the parent stack. If None, adds the parent on top of the stack. Defaults to None.
         """
         if stack_position is not None:
             self.parent_loops.insert(stack_position, parent)
@@ -136,4 +133,9 @@ class Loop(_Base_Loop):
             self.parent_loops.append(parent)
 
     def __str__(self) -> str:
+        """Get a string representation of this loop.
+
+        Returns:
+            str: String representation showing the loop ID and associated yarn.
+        """
         return f"{self.loop_id} on yarn {self.yarn}"

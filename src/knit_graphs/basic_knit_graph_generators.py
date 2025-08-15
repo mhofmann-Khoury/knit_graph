@@ -1,4 +1,8 @@
-"""Module of functions that generate basic knit graph swatches."""
+"""Module of functions that generate basic knit graph swatches.
+
+This module provides utility functions for creating common knitting patterns and structures as knit graphs.
+These functions serve as building blocks for testing and demonstration purposes.
+"""
 from knit_graphs.artin_wale_braids.Crossing_Direction import Crossing_Direction
 from knit_graphs.Knit_Graph import Knit_Graph
 from knit_graphs.Pull_Direction import Pull_Direction
@@ -6,9 +10,13 @@ from knit_graphs.Yarn import Yarn
 
 
 def co_loops(width: int) -> tuple[Knit_Graph, Yarn]:
-    """
-    :param width:
-    :return: Knit Graph with one course of length width
+    """Create a cast-on row of loops forming the foundation for knitting patterns.
+
+    Args:
+        width (int): The number of loops to create in the cast-on row.
+
+    Returns:
+        tuple[Knit_Graph, Yarn]: A tuple containing the knit graph with one course of the specified width and the yarn used to create it.
     """
     knit_graph = Knit_Graph()
     yarn = Yarn(knit_graph=knit_graph)
@@ -18,10 +26,16 @@ def co_loops(width: int) -> tuple[Knit_Graph, Yarn]:
 
 
 def jersey_swatch(width: int, height: int) -> Knit_Graph:
-    """
-    :param width: number of stitches per course
-    :param height: number of loops per course
-    :return: Generate a Knitgraph of width and height with all knit stitches in a sheet structure
+    """Generate a rectangular knit swatch with all knit stitches in a flat sheet structure.
+
+    This creates a basic stockinette/jersey pattern where all stitches are worked as knit stitches from back to front.
+
+    Args:
+        width (int): The number of stitches per course (horizontal row).
+        height (int): The number of courses (vertical rows) in the swatch.
+
+    Returns:
+        Knit_Graph: A knit graph representing a flat rectangular swatch with all knit stitches.
     """
     knit_graph, yarn = co_loops(width)
     last_course = list(knit_graph.get_courses()[0])
@@ -36,15 +50,22 @@ def jersey_swatch(width: int, height: int) -> Knit_Graph:
 
 
 def jersey_tube(tube_width: int, height: int) -> Knit_Graph:
-    """
-    :param tube_width: number of stitches per course on front side of tube
-    :param height: number of loops per course
-    :return: Generate a Knitgraph of width and height with all knit stitches in a tube structure
+    """Generate a tubular knit structure with all knit stitches worked in the round.
+
+    This creates a seamless tube by knitting in the round, where the front and back sections are connected by floats to maintain the circular structure.
+
+    Args:
+        tube_width (int): The number of stitches per course on the front side of the tube.
+        height (int): The number of courses (vertical rows) in the tube.
+
+    Returns:
+        Knit_Graph: A knit graph representing a seamless tube with all knit stitches.
     """
     knit_graph, yarn = co_loops(tube_width * 2)
     last_course = [*knit_graph.get_courses()[0]]
 
     def _set_tube_floats() -> None:
+        """Internal helper function to set up float connections between front and back of tube."""
         front_loops = last_course[0:tube_width]
         back_loops = last_course[tube_width:]
         for first_front, second_front, back in zip(front_loops[0:-1], front_loops[1:], reversed(back_loops)):
@@ -63,10 +84,16 @@ def jersey_tube(tube_width: int, height: int) -> Knit_Graph:
 
 
 def kp_rib_swatch(width: int, height: int) -> Knit_Graph:
-    """
-    :param width: number of stitches per course
-    :param height: number of loops per course
-    :return: Generate a Knitgraph of width and height with alternating wales of knit purl stitches in a sheet structure
+    """Generate a knit-purl ribbing swatch with alternating wales of knit and purl stitches.
+
+    This creates a 1x1 ribbing pattern where knit and purl wales alternate, maintaining their stitch type throughout the height of the swatch for a stretchy, textured fabric.
+
+    Args:
+        width (int): The number of stitches per course (horizontal row).
+        height (int): The number of courses (vertical rows) in the swatch.
+
+    Returns:
+        Knit_Graph: A knit graph representing a ribbed swatch with alternating knit and purl wales.
     """
     knit_graph, yarn = co_loops(width)
     last_course = knit_graph.get_courses()[0]
@@ -92,10 +119,16 @@ def kp_rib_swatch(width: int, height: int) -> Knit_Graph:
 
 
 def seed_swatch(width: int, height: int) -> Knit_Graph:
-    """
-    :param width: number of stitches per course
-    :param height: number of loops per course
-    :return: Generate a Knitgraph of width and height with checkered knit purl stitches in a sheet structure
+    """Generate a seed stitch swatch with a checkerboard pattern of knit and purl stitches.
+
+    This creates a textured fabric where each stitch alternates between knit and purl both horizontally and vertically, creating a bumpy, non-curling fabric texture.
+
+    Args:
+        width (int): The number of stitches per course (horizontal row).
+        height (int): The number of courses (vertical rows) in the swatch.
+
+    Returns:
+        Knit_Graph: A knit graph representing a seed stitch swatch with checkerboard knit-purl pattern.
     """
     knit_graph, yarn = co_loops(width)
     last_course = knit_graph.get_courses()[0]
@@ -121,10 +154,17 @@ def seed_swatch(width: int, height: int) -> Knit_Graph:
 
 
 def kp_mesh_decrease_left_swatch(width: int, height: int) -> Knit_Graph:
-    """
-    :param width: number of stitches per course
-    :param height: number of loops per course
-    :return: Knit Graph with mesh of kp rib with even courses decreasing purls leftward and replacing them with yarn overs
+    """Generate a mesh pattern with left-leaning decreases and yarn overs in knit-purl ribbing.
+
+    This creates an openwork mesh pattern where purl stitches are decreased leftward on even courses and replaced with yarn overs,
+    creating decorative holes in the fabric while maintaining the overall stitch count.
+
+    Args:
+        width (int): The number of stitches per course (horizontal row).
+        height (int): The number of courses (vertical rows) in the swatch.
+
+    Returns:
+        Knit_Graph: A knit graph representing a mesh swatch with left-leaning decreases and yarn overs.
     """
     # k<o k<o k <-: 1->2
     # |\  |\
@@ -166,10 +206,17 @@ def kp_mesh_decrease_left_swatch(width: int, height: int) -> Knit_Graph:
 
 
 def kp_mesh_decrease_right_swatch(width: int, height: int) -> Knit_Graph:
-    """
-    :param width: number of stitches per course
-    :param height: number of loops per course
-    :return: Knit Graph with mesh of kp rib with even courses decreasing purls rightward and replacing them with yarn overs
+    """Generate a mesh pattern with right-leaning decreases and yarn overs in knit-purl ribbing.
+
+    This creates an openwork mesh pattern where purl stitches are decreased rightward on even courses and replaced with yarn overs,
+    creating decorative holes in the fabric while maintaining the overall stitch count.
+
+    Args:
+        width (int): The number of stitches per course (horizontal row).
+        height (int): The number of courses (vertical rows) in the swatch.
+
+    Returns:
+        Knit_Graph: A knit graph representing a mesh swatch with right-leaning decreases and yarn overs.
     """
     # k o>k o>k <-: 1->2
     #    /|  /|
@@ -211,10 +258,16 @@ def kp_mesh_decrease_right_swatch(width: int, height: int) -> Knit_Graph:
 
 
 def twist_cable(width: int, height: int) -> Knit_Graph:
-    """
-    :param width: number of stitches per course
-    :param height: number of loops per course
-    :return: Knit Graph of alternating 1 by 1 twists in different directions with purl wales between them
+    """Generate a twisted cable pattern with alternating crossing directions and purl separators.
+
+    This creates a cable pattern with 1x1 twists that alternate direction every two rows, separated by purl wales to make the cable structure more prominent.
+
+    Args:
+        width (int): The number of stitches per course (horizontal row).
+        height (int): The number of courses (vertical rows) in the swatch.
+
+    Returns:
+        Knit_Graph: A knit graph representing a twisted cable pattern with alternating crossing directions.
     """
     # p k\k p ->: 3-4
     # p k k p <-: 2-3
