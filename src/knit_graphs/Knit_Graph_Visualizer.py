@@ -661,15 +661,12 @@ class Knit_Graph_Visualizer:
                 self._set_x_of_loop(loop, _target_distance_from_left(loop) + current_left)
 
 
-def visualize_knit_graph(knit_graph: Knit_Graph,
-                         first_course_index: int = 0, top_course_index: int | None = None,
-                         start_on_left: bool = True,
-                         balance_by_base_width: bool = False,
-                         left_zero_align: bool = True,
-                         graph_title: str = "knit_graph") -> None:
+def visualize_knit_graph(knit_graph: Knit_Graph, first_course_index: int = 0, top_course_index: int | None = None, start_on_left: bool = True, balance_by_base_width: bool = False,
+                         left_zero_align: bool = True, graph_title: str = "knit_graph", show_figure: bool = True) -> None:
     """Generate and display a plotly visualization of the given knit graph with specified configuration.
 
     Args:
+        show_figure:
         knit_graph (Knit_Graph): The knit graph to visualize.
         first_course_index (int): Index of the first (bottom) course to include in the visualization. Defaults to 0.
         top_course_index (int | None): Index of the last (top) course to include in the visualization. If None, visualizes up to the top of the knit graph.
@@ -677,6 +674,8 @@ def visualize_knit_graph(knit_graph: Knit_Graph,
         balance_by_base_width (bool): Whether to scale all course widths to match the first course width. Defaults to False.
         left_zero_align (bool): Whether to align the leftmost position of each course with x=0 in the figure. Defaults to True.
         graph_title (str): The title to display on the generated figure. Defaults to "knit_graph".
+        show_figure (bool, optional): If True, the visualization will be shown. Defaults to True.
     """
     visualizer = Knit_Graph_Visualizer(knit_graph, first_course_index, top_course_index, start_on_left, balance_by_base_width, left_zero_align)
-    visualizer.make_figure(graph_title)
+    if show_figure:
+        visualizer.make_figure(graph_title)
