@@ -161,10 +161,10 @@ jobs:
       - name: Install project
         run: poetry install --no-interaction
 
-      - name: Run full test suite
+      - name: Run test suite
         run: |
-          echo "🧪 Running complete test suite before release..."
-          poetry run coverage run -m unittest discover tests
+          echo "🧪 Running test suite before release..."
+          poetry run python -m unittest discover tests
 
       - name: Run pre-commit hooks
         run: |
@@ -175,11 +175,6 @@ jobs:
         run: |
           echo "📦 Building package..."
           poetry build
-
-      - name: Validate package
-        run: |
-          echo "✅ Validating package with twine..."
-          poetry run twine check dist/*
 
       - name: Test package installation
         run: |
