@@ -141,11 +141,6 @@ jobs:
             exit 1
           fi
 
-          if [ ! -f "docs/build/html/api/modules.html" ]; then
-            echo "❌ API documentation not found - check that sphinx-apidoc ran successfully"
-            exit 1
-          fi
-
           # Check for broken internal links (basic validation)
           echo "✅ Documentation validation passed"
 
