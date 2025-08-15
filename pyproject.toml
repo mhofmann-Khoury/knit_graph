@@ -109,8 +109,6 @@ importlib-resources = ">=6.5.2"
 # TESTING FRAMEWORK AND PLUGINS
 # -------------------------------------------------------------------------
 coverage = "^7.3.0"                # Coverage measurement for unittest
-unittest-xml-reporting = "^3.2.0"  # XML test reporting for CI/CD
-xmlrunner = "^1.7.7"               # Alternative XML test runner for unittest
 
 # -------------------------------------------------------------------------
 # CODE QUALITY AND FORMATTING TOOLS
