@@ -141,34 +141,7 @@ jobs:
       - name: Run unittest with coverage
         run: |
           poetry run coverage run -m unittest discover tests
-          poetry run coverage xml
           poetry run coverage report
-
-      - name: Check coverage threshold
-        if: matrix.python-version == env.PYTHON_VERSION && matrix.os == 'ubuntu-latest'
-        run: |
-          # Coverage threshold is set in pyproject.toml [tool.coverage.report] fail_under
-          # Only check coverage on Ubuntu to avoid platform-specific coverage variations
-          poetry run coverage report --fail-under=80
-
-      - name: Generate coverage reports
-        if: matrix.python-version == env.PYTHON_VERSION && matrix.os == 'ubuntu-latest'
-        run: |
-          poetry run coverage html
-          poetry run coverage report --format=total > coverage_total.txt
-          echo "Coverage Summary:" >> coverage_summary.txt
-          poetry run coverage report >> coverage_summary.txt
-
-      - name: Upload coverage reports
-        if: matrix.python-version == env.PYTHON_VERSION && matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4  # Updated from v3 to v4
-        with:
-          name: coverage-reports
-          path: |
-            htmlcov/
-            coverage.xml
-            coverage_total.txt
-            coverage_summary.txt
 
   # ===========================================================================
   # STATIC TYPE CHECKING
