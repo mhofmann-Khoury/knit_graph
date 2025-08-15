@@ -92,7 +92,8 @@ class Knit_Graph(_Base_Knit_Graph):
         cur_loop = first_loop
         while len(self.stitch_graph.successors(cur_loop)) == 1:
             cur_loop = [*self.stitch_graph.successors(cur_loop)][0]
-            wale.add_loop_to_end(cur_loop, self.stitch_graph.edges[wale.last_loop, cur_loop]['pull_direction'])
+            assert isinstance(wale.last_loop, Loop)
+            wale.add_loop_to_end(cur_loop, self.get_pull_direction(wale.last_loop, cur_loop))
         return wale
 
     def get_wales_ending_with_loop(self, last_loop: Loop) -> list[Wale]:

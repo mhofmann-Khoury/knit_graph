@@ -149,7 +149,7 @@ def kp_mesh_decrease_left_swatch(width: int, height: int) -> Knit_Graph:
             if parent_pull is Pull_Direction.BtF:  # knits stay in decrease at bottom of stack
                 knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.BtF, stack_position=0)
                 prior_parent = yarn.prior_loop(parent_loop)
-                if prior_parent is not None:
+                if prior_parent is not None and prior_parent in last_course:
                     knit_graph.connect_loops(prior_parent, child_loop, pull_direction=Pull_Direction.FtB, stack_position=1)
             next_course.append(child_loop)
         last_course = next_course

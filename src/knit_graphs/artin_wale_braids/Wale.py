@@ -17,10 +17,12 @@ class Wale(_Base_Wale):
 
     def __init__(self, first_loop: None | Loop = None) -> None:
         super().__init__()
-        self.first_loop: None | Loop = first_loop  # Todo: Shouldn't the first loop be added to the graph?
-        self.last_loop: None | Loop = first_loop
+        self.first_loop: None | Loop = first_loop
+        self.last_loop: None | Loop = None
+        if isinstance(self.first_loop, Loop):
+            self.add_loop_to_end(self.first_loop, pull_direction=None)
 
-    def add_loop_to_end(self, loop: Loop, pull_direction: Pull_Direction = Pull_Direction.BtF) -> None:
+    def add_loop_to_end(self, loop: Loop, pull_direction: Pull_Direction | None = Pull_Direction.BtF) -> None:
         """
         Adds loop onto stitch graph with edge value of given pull_direction. Assumes loop comes after last loop.
         :param loop: Loop to add to the end of wale.
@@ -31,6 +33,7 @@ class Wale(_Base_Wale):
             self.first_loop = loop
             self.last_loop = loop
         else:
+            assert isinstance(pull_direction, Pull_Direction)
             self.stitches.add_edge(self.last_loop, loop, pull_direction=pull_direction)
             self.last_loop = loop
 
