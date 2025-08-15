@@ -207,6 +207,9 @@ jobs:
       url: https://test.pypi.org/p/${{ env.PACKAGE_NAME }}
 
     steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
@@ -256,6 +259,9 @@ jobs:
       url: https://pypi.org/p/${{ env.PACKAGE_NAME }}
 
     steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
