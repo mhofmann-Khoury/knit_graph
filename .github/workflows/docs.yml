@@ -104,8 +104,8 @@ jobs:
           mkdir -p docs/source/api
 
           # TODO: Update package name and source directory
-          # Generate API documentation from source code
-          poetry run sphinx-apidoc -o docs/source/api src/knit_graphs/ --force --module-first
+          # Generate API documentation from source code without creating modules.rst
+          poetry run sphinx-apidoc -o docs/source/api src/knit_graphs/ --force --module-first --separate --no-toc
 
           echo "📚 Building documentation..."
 
