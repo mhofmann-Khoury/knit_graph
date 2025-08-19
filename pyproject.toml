@@ -12,7 +12,7 @@ build-backend = "poetry.core.masonry.api"  # Use Poetry's build system
 # All the information about your project that will appear on PyPI
 [tool.poetry]
 name = "knit-graphs"
-version = "0.0.7"
+version = "0.0.8"
 description = "A graph representation of knitted structures where each loop is a node and edges represent yarn and stitch relationships."
 authors = ["Megan Hofmann <m.hofmann@northeastern.edu>"]
 maintainers = ["Megan Hofmann <m.hofmann@northeastern.edu>"]
@@ -79,7 +79,7 @@ exclude = [
 [tool.poetry.dependencies]
 python = ">=3.11,<3.14"
 networkx = ">=3.5"
-plotly = ">=6.3.0"
+plotly = "^6.3.0"
 # Examples:
 # requests = "^2.31.0"              # For HTTP requests
 # pydantic = "^2.0.0"               # For data validation
@@ -101,6 +101,7 @@ plotly = ">=6.3.0"
 # DEVELOPMENT DEPENDENCIES
 # =============================================================================
 # These packages are only needed during development and testing
+
 
 [tool.poetry.group.dev.dependencies]
 importlib-resources = ">=6.5.2"
@@ -277,8 +278,6 @@ omit = [                           # Files to exclude from coverage measurement
     "*/__pycache__/*",              # Ignore Python cache files
     "*/site-packages/*",            # Ignore installed packages
     "*/venv/*",                     # Ignore virtual environment
-    "setup.py",                     # Ignore setup script (if present)
-    "update_project_config.py"
 ]
 branch = true                       # Enable branch coverage (more comprehensive)
 
@@ -300,39 +299,6 @@ fail_under = 0                     # Set minimum coverage percentage (fail if co
 show_missing = true                 # Show which lines are missing coverage
 skip_covered = false                # Show covered files in report
 skip_empty = true                   # Skip empty files in report
-
-# Coverage output formats
-[tool.coverage.html]
-directory = "htmlcov"               # Directory for HTML coverage reports
-
-[tool.coverage.xml]
-output = "coverage.xml"             # XML coverage report (used by CI/CD tools)
-
-# =============================================================================
-# VERSION BUMPING CONFIGURATION
-# =============================================================================
-# Configuration for bump2version tool to automate version updates
-[tool.bumpversion]
-current_version = "0.0.7"          # Keep this in sync with tool.poetry.version
-parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
-serialize = ["{major}.{minor}.{patch}"]
-search = "{current_version}"
-replace = "{new_version}"
-commit = true                       # Automatically commit version changes
-tag = true                          # Automatically create git tags
-sign_tags = false                   # Set to true if you want to sign tags with GPG
-
-# Files where version numbers should be updated
-[[tool.bumpversion.files]]
-filename = "pyproject.toml"
-search = 'version = "{current_version}"'
-replace = 'version = "{new_version}"'
-
-# Add other files that contain version numbers
-# [[tool.bumpversion.files]]
-# filename = "src/your_project_name/__init__.py"
-# search = '__version__ = "{current_version}"'
-# replace = '__version__ = "{new_version}"'
 
 # =============================================================================
 # WHEEL BUILDING CONFIGURATION

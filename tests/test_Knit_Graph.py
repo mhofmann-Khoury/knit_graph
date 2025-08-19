@@ -3,9 +3,8 @@ from unittest import TestCase
 from knit_graphs.basic_knit_graph_generators import (
     jersey_swatch,
     jersey_tube,
-    kp_mesh_decrease_left_swatch,
-    kp_mesh_decrease_right_swatch,
     kp_rib_swatch,
+    lace_mesh,
     seed_swatch,
     twist_cable,
 )
@@ -13,9 +12,9 @@ from knit_graphs.basic_knit_graph_generators import (
 
 class TestKnit_Graph(TestCase):
     def test_mesh(self):
-        generators = [kp_mesh_decrease_left_swatch, kp_mesh_decrease_right_swatch]
-        width = 11
-        height = 10
+        generators = [lace_mesh]
+        width = 13
+        height = 6
         for generator in generators:
             print(f"Mesh test of height {height}  and width {width} on {generator.__name__}")
             _knit_graph = generator(width, height)

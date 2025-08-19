@@ -27,7 +27,7 @@ repos:
       - id: check-toml                # Validate TOML syntax (pyproject.toml)
       - id: check-json                # Validate JSON syntax
       - id: check-added-large-files   # Prevent accidentally committing large files
-        args: ['--maxkb=500']         # Max file size in KB
+        args: ['--maxkb=1000']         # Max file size in KB
       - id: check-merge-conflict      # Detect merge conflict markers
       - id: check-case-conflict       # Detect case-sensitive filename conflicts
       - id: check-docstring-first     # Ensure docstrings come first in modules

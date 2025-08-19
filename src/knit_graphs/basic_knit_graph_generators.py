@@ -5,6 +5,7 @@ These functions serve as building blocks for testing and demonstration purposes.
 """
 from knit_graphs.artin_wale_braids.Crossing_Direction import Crossing_Direction
 from knit_graphs.Knit_Graph import Knit_Graph
+from knit_graphs.Loop import Loop
 from knit_graphs.Pull_Direction import Pull_Direction
 from knit_graphs.Yarn import Yarn
 
@@ -153,105 +154,53 @@ def seed_swatch(width: int, height: int) -> Knit_Graph:
     return knit_graph
 
 
-def kp_mesh_decrease_left_swatch(width: int, height: int) -> Knit_Graph:
-    """Generate a mesh pattern with left-leaning decreases and yarn overs in knit-purl ribbing.
-
-    This creates an openwork mesh pattern where purl stitches are decreased leftward on even courses and replaced with yarn overs,
-    creating decorative holes in the fabric while maintaining the overall stitch count.
+def lace_mesh(width: int, height: int) -> Knit_Graph:
+    """Generate a mesh pattern with alternating left and right leaning decrease paired to yarn-overs.
+    These pairings create a basic lace pattern with eyelets formed around the increases.
 
     Args:
         width (int): The number of stitches per course (horizontal row).
         height (int): The number of courses (vertical rows) in the swatch.
 
     Returns:
-        Knit_Graph: A knit graph representing a mesh swatch with left-leaning decreases and yarn overs.
+        Knit_Graph: A knit graph representing a mesh swatch.
     """
-    # k<o k<o k <-: 1->2
-    # |\  |\
-    # k p k p k ->: 0->1
-    # 0 1 2 3 4
     knit_graph, yarn = co_loops(width)
     last_course = knit_graph.get_courses()[0]
     next_course = []
-    next_pull = Pull_Direction.BtF
     for parent_loop in reversed(last_course):
         child_loop = yarn.make_loop_on_end()
-        knit_graph.connect_loops(parent_loop, child_loop, pull_direction=next_pull)
-        next_pull = next_pull.opposite()
+        knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.BtF)
         next_course.append(child_loop)
     last_course = next_course
     for _ in range(1, height):
+        # Make the lace course
         next_course = []
-        for parent_loop in reversed(last_course):
+        yo_parent = None
+        prior_child = None
+        for i, parent_loop in enumerate(reversed(last_course)):
             child_loop = yarn.make_loop_on_end()
-            grand_parent = parent_loop.parent_loops[0]
-            parent_pull = knit_graph.get_pull_direction(grand_parent, parent_loop)
-            if parent_pull is Pull_Direction.BtF:  # knits stay in decrease at bottom of stack
+            if i % 3 == 0:  # Just knit every third stitch
                 knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.BtF, stack_position=0)
-                prior_parent = yarn.prior_loop(parent_loop)
-                if prior_parent is not None and prior_parent in last_course:
-                    knit_graph.connect_loops(prior_parent, child_loop, pull_direction=Pull_Direction.FtB, stack_position=1)
-            next_course.append(child_loop)
-        last_course = next_course
-        next_course = []
-        for parent_loop in reversed(last_course):
-            child_loop = yarn.make_loop_on_end()
-            if len(parent_loop.parent_loops) == 0:
-                knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.FtB)
-            else:
-                knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.BtF)
-            next_course.append(child_loop)
-        last_course = next_course
-    return knit_graph
-
-
-def kp_mesh_decrease_right_swatch(width: int, height: int) -> Knit_Graph:
-    """Generate a mesh pattern with right-leaning decreases and yarn overs in knit-purl ribbing.
-
-    This creates an openwork mesh pattern where purl stitches are decreased rightward on even courses and replaced with yarn overs,
-    creating decorative holes in the fabric while maintaining the overall stitch count.
-
-    Args:
-        width (int): The number of stitches per course (horizontal row).
-        height (int): The number of courses (vertical rows) in the swatch.
-
-    Returns:
-        Knit_Graph: A knit graph representing a mesh swatch with right-leaning decreases and yarn overs.
-    """
-    # k o>k o>k <-: 1->2
-    #    /|  /|
-    # k p k p k ->: 0->1
-    # 0 1 2 3 4
-    knit_graph, yarn = co_loops(width)
-    last_course = knit_graph.get_courses()[0]
-    next_course = []
-    next_pull = Pull_Direction.BtF
-    for parent_loop in reversed(last_course):
-        child_loop = yarn.make_loop_on_end()
-        knit_graph.connect_loops(parent_loop, child_loop, pull_direction=next_pull)
-        next_pull = next_pull.opposite()
-        next_course.append(child_loop)
-    last_course = next_course
-    for _ in range(1, height):
-        next_course = []
-        for parent_loop in reversed(last_course):
-            child_loop = yarn.make_loop_on_end()
-            grand_parent = parent_loop.parent_loops[0]
-            parent_pull = knit_graph.get_pull_direction(grand_parent, parent_loop)
-            if parent_pull is Pull_Direction.BtF:  # knits stay in decrease at bottom of stack
+            elif i % 6 == 1:  # Second of every 6 stitches (0 indexed) is yarn over before a decrease.
+                yo_parent = parent_loop
+            elif i % 6 == 2:  # Third of every 6 stitches is bottom of decrease with prior yarn-over's parent
                 knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.BtF, stack_position=0)
-                next_parent = yarn.next_loop(parent_loop)
-                if next_parent is not None:
-                    knit_graph.connect_loops(next_parent, child_loop, pull_direction=Pull_Direction.FtB, stack_position=1)
+                assert isinstance(yo_parent, Loop)
+                knit_graph.connect_loops(yo_parent, child_loop, pull_direction=Pull_Direction.BtF, stack_position=1)
+            elif i % 6 == 4:  # Fifth of every six stitches is bottom of decrease with next yarn-over's parent
+                knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.BtF, stack_position=0)
+                prior_child = child_loop
+            elif i % 6 == 5:  # The last of six stitches is the top of the prior decrease and new yarn-over
+                assert isinstance(prior_child, Loop)
+                knit_graph.connect_loops(parent_loop, prior_child, pull_direction=Pull_Direction.BtF, stack_position=1)
             next_course.append(child_loop)
         last_course = next_course
+        # Make a basic jersey course
         next_course = []
         for parent_loop in reversed(last_course):
             child_loop = yarn.make_loop_on_end()
-            if len(parent_loop.parent_loops) == 0:
-                knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.FtB)
-            else:
-                knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.BtF)
+            knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.BtF)
             next_course.append(child_loop)
         last_course = next_course
     return knit_graph
