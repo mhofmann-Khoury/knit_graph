@@ -4,13 +4,15 @@ This module provides the Wale_Group class which represents a collection of inter
 """
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from networkx import DiGraph, dfs_preorder_nodes
 
-from knit_graphs._base_classes import _Base_Knit_Graph
 from knit_graphs.artin_wale_braids.Wale import Wale
 from knit_graphs.Loop import Loop
+
+if TYPE_CHECKING:
+    from knit_graphs.Knit_Graph import Knit_Graph
 
 
 class Wale_Group:
@@ -27,7 +29,7 @@ class Wale_Group:
         bottom_loops (dict[Loop, Wale]): Mapping from the first (bottom) loop of each wale to the wale itself.
     """
 
-    def __init__(self, terminal_wale: Wale, knit_graph: _Base_Knit_Graph):
+    def __init__(self, terminal_wale: Wale, knit_graph: Knit_Graph):
         """Initialize a wale group starting from a terminal wale and building downward.
 
         Args:
@@ -36,7 +38,7 @@ class Wale_Group:
         """
         self.wale_graph: DiGraph = DiGraph()
         self.stitch_graph: DiGraph = DiGraph()
-        self._knit_graph: _Base_Knit_Graph = knit_graph
+        self._knit_graph: Knit_Graph = knit_graph
         self.terminal_wale: Wale | None = terminal_wale
         self.top_loops: dict[Loop, Wale] = {}
         self.bottom_loops: dict[Loop, Wale] = {}
@@ -79,7 +81,7 @@ class Wale_Group:
         """
         added_wales = []
         for parent_loop in cast(Loop, wale.first_loop).parent_loops:
-            parent_wales = cast(list[Wale], self._knit_graph.get_wales_ending_with_loop(parent_loop))
+            parent_wales = self._knit_graph.get_wales_ending_with_loop(parent_loop)
             for parent_wale in parent_wales:
                 self.add_wale(parent_wale)
             added_wales.extend(parent_wales)

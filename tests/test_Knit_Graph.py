@@ -16,7 +16,6 @@ class TestKnit_Graph(TestCase):
         width = 13
         height = 6
         for generator in generators:
-            print(f"Mesh test of height {height}  and width {width} on {generator.__name__}")
             _knit_graph = generator(width, height)
 
     def test_twist_cable(self):
@@ -24,7 +23,6 @@ class TestKnit_Graph(TestCase):
         width = 12
         height = 10
         for generator in generators:
-            print(f"Twist Cable test of height {height}  and width {width} on {generator.__name__}")
             _knit_graph = generator(width, height)
 
     def test_tube_in_round(self):
@@ -41,7 +39,6 @@ class TestKnit_Graph(TestCase):
         width = 10
         for generator in generators:
             height = 10
-            print(f"Course test of height {height + 1} on {generator.__name__}")
             knit_graph = generator(width, height)
             courses = knit_graph.get_courses()
             assert len(courses) == height + 1, f"Expected courses to be {height + 1} but got {len(courses)}"
@@ -50,7 +47,6 @@ class TestKnit_Graph(TestCase):
             assert len(courses) == height + 1, f"Expected courses to be {height + 1} but got {len(courses)}"
 
             height = 11
-            print(f"Course test of height {height + 1} on {generator.__name__}")
             knit_graph = generator(width, height)
             courses = knit_graph.get_courses()
             assert len(courses) == height + 1, f"Expected courses to be {height + 1} but got {len(courses)}"
@@ -63,19 +59,16 @@ class TestKnit_Graph(TestCase):
         height = 10
         for generator in generators:
             width = 10
-            print(f"Wale test of height {height} and width {width} on {generator.__name__}")
             knit_graph = generator(width, height)
             wale_groups = knit_graph.get_wale_groups()
             assert len(wale_groups) == width, f"Expected wale_groups to be {width} but got {len(wale_groups)}"
 
             width = 11
-            print(f"Wale test of height {height} and width {width} on {generator.__name__}")
             knit_graph = generator(width, height)
             wale_groups = knit_graph.get_wale_groups()
             assert len(wale_groups) == width, f"Expected wale_groups to be {width} but got {len(wale_groups)}"
 
         width = 10
-        print(f"Wale test of height {height} and tube width {width} on Jersey Tube")
         knit_graph = jersey_tube(width, height)
         wale_groups = knit_graph.get_wale_groups()
         assert len(wale_groups) == width * 2, f"Expected wale_groups to be {width * 2} but got {len(wale_groups)}"

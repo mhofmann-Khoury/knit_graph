@@ -6,14 +6,13 @@ from __future__ import annotations
 
 from typing import Iterator, cast
 
-from networkx import dfs_preorder_nodes
+from networkx import DiGraph, dfs_preorder_nodes
 
-from knit_graphs._base_classes import _Base_Wale
 from knit_graphs.Loop import Loop
 from knit_graphs.Pull_Direction import Pull_Direction
 
 
-class Wale(_Base_Wale):
+class Wale:
     """A data structure representing stitch relationships between loops in a vertical column of a knitted structure.
 
     A wale represents a vertical sequence of loops connected by stitch edges, forming a column in the knitted fabric.
@@ -31,7 +30,7 @@ class Wale(_Base_Wale):
         Args:
             first_loop (Loop | None, optional): The initial loop to start the wale with. If provided, it will be added as both the first and last loop. Defaults to None.
         """
-        super().__init__()
+        self.stitches: DiGraph = DiGraph()
         self.first_loop: None | Loop = first_loop
         self.last_loop: None | Loop = None
         if isinstance(self.first_loop, Loop):

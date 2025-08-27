@@ -6,12 +6,14 @@ The Yarn class manages the sequence of loops along a yarn and their floating rel
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterator, cast
+from typing import TYPE_CHECKING, Iterator, cast
 
-from networkx import dfs_edges, dfs_preorder_nodes
+from networkx import DiGraph, dfs_edges, dfs_preorder_nodes
 
-from knit_graphs._base_classes import _Base_Knit_Graph, _Base_Yarn
 from knit_graphs.Loop import Loop
+
+if TYPE_CHECKING:
+    from knit_graphs.Knit_Graph import Knit_Graph
 
 
 @dataclass(frozen=True)
@@ -70,33 +72,34 @@ class Yarn_Properties:
         return hash((self.name, self.plies, self.weight, self.color))
 
 
-class Yarn(_Base_Yarn):
+class Yarn:
     """A class to represent a yarn structure as a sequence of connected loops.
 
     The Yarn class manages a directed graph of loops representing the physical yarn path through a knitted structure.
     It maintains the sequential order of loops and their floating relationships, providing methods for navigation and manipulation of the yarn structure.
 
     Attributes:
+        loop_graph (DiGraph): The directed graph loops connected by yarn-wise float edges.
         properties (Yarn_Properties): The physical and visual properties of this yarn.
     """
 
-    def __init__(self, yarn_properties: None | Yarn_Properties = None, knit_graph: None | _Base_Knit_Graph = None):
+    def __init__(self, yarn_properties: None | Yarn_Properties = None, knit_graph: None | Knit_Graph = None):
         """Initialize a yarn with the specified properties and optional knit graph association.
 
         Args:
             yarn_properties (None | Yarn_Properties, optional): The properties defining this yarn. If None, uses default properties. Defaults to standard properties.
             knit_graph (None | Knit_Graph, optional): The knit graph that will own this yarn. Can be None for standalone yarns. Defaults to None.
         """
-        super().__init__()
+        self.loop_graph: DiGraph = DiGraph()
         if yarn_properties is None:
             yarn_properties = Yarn_Properties.default_yarn()
         self.properties: Yarn_Properties = yarn_properties
         self._first_loop: Loop | None = None
         self._last_loop: Loop | None = None
-        self._knit_graph: None | _Base_Knit_Graph = knit_graph
+        self._knit_graph: None | Knit_Graph = knit_graph
 
     @property
-    def knit_graph(self) -> None | _Base_Knit_Graph:
+    def knit_graph(self) -> None | Knit_Graph:
         """Get the knit graph that owns this yarn.
 
         Returns:
@@ -105,7 +108,7 @@ class Yarn(_Base_Yarn):
         return self._knit_graph
 
     @knit_graph.setter
-    def knit_graph(self, knit_graph: _Base_Knit_Graph) -> None:
+    def knit_graph(self, knit_graph: Knit_Graph) -> None:
         """Set the knit graph that owns this yarn.
 
         Args:

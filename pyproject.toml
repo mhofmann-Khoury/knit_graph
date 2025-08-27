@@ -12,7 +12,7 @@ build-backend = "poetry.core.masonry.api"  # Use Poetry's build system
 # All the information about your project that will appear on PyPI
 [tool.poetry]
 name = "knit-graphs"
-version = "0.0.8"
+version = "0.0.9"
 description = "A graph representation of knitted structures where each loop is a node and edges represent yarn and stitch relationships."
 authors = ["Megan Hofmann <m.hofmann@northeastern.edu>"]
 maintainers = ["Megan Hofmann <m.hofmann@northeastern.edu>"]
@@ -136,21 +136,12 @@ sphinx-autoapi = "^3.0.0"          # Automatically generates API documentation
 # -------------------------------------------------------------------------
 # DEVELOPMENT TOOLS AND UTILITIES
 # -------------------------------------------------------------------------
-ipython = "^8.14.0"                # Enhanced interactive Python shell for debugging
-rich = "^13.5.0"                   # Beautiful terminal output and debugging
 tox = "^4.11.0"                    # Test across multiple Python versions locally
 
 # -------------------------------------------------------------------------
 # RELEASE AND BUILD TOOLS
 # -------------------------------------------------------------------------
 build = "^0.10.0"                  # PEP 517 build tool (for creating distributions)
-bump2version = "^1.0.0"            # Automated version bumping tool
-
-# -------------------------------------------------------------------------
-# PLATFORM-SPECIFIC DEPENDENCIES
-# -------------------------------------------------------------------------
-# Only install on Windows systems (for colored terminal output)
-colorama = {version = "^0.4.6", markers = "sys_platform == 'win32'"}
 
 # =============================================================================
 # DOCUMENTATION-SPECIFIC DEPENDENCIES
@@ -243,12 +234,6 @@ disallow_incomplete_defs = false    # Allow incomplete type annotations in tests
 check_untyped_defs = false          # Don't type-check untyped test methods
 warn_return_any = false             # Don't warn about returning 'Any' in tests
 warn_unused_ignores = false         # Don't warn about unused type ignores in tests
-
-# Add overrides for specific third-party libraries that may have type issues
-# Example:
-# [[tool.mypy.overrides]]
-# module = ["problematic_library.*"]
-# ignore_errors = true
 
 # =============================================================================
 # UNITTEST TESTING FRAMEWORK CONFIGURATION

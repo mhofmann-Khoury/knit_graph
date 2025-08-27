@@ -5,12 +5,13 @@ Loops are the fundamental building blocks of knitted structures and maintain rel
 """
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
-from knit_graphs._base_classes import _Base_Loop, _Base_Yarn
+if TYPE_CHECKING:
+    from knit_graphs.Yarn import Yarn
 
 
-class Loop(_Base_Loop):
+class Loop:
     """A class to represent a single loop structure for modeling a single loop in a knitting pattern.
 
     The Loop class manages yarn relationships, parent-child connections for stitches, and float positioning for complex knitting structures.
@@ -23,15 +24,17 @@ class Loop(_Base_Loop):
         back_floats (dict[Loop, set[Loop]]): A dictionary tracking loops that this loop floats behind.
     """
 
-    def __init__(self, loop_id: int, yarn: _Base_Yarn) -> None:
+    def __init__(self, loop_id: int, yarn: Yarn) -> None:
         """Construct a Loop object with the specified identifier and yarn.
 
         Args:
             loop_id (int): A unique identifier for the loop, must be non-negative.
-            yarn (_Base_Yarn): The yarn that creates and holds this loop.
+            yarn (Yarn): The yarn that creates and holds this loop.
         """
-        super().__init__(loop_id)
-        self.yarn: _Base_Yarn = yarn
+        if loop_id < 0:
+            raise ValueError(f"Loop identifier must be non-negative but got {loop_id}")
+        self._loop_id: int = loop_id
+        self.yarn: Yarn = yarn
         self.parent_loops: list[Loop] = []
         self.front_floats: dict[Loop, set[Loop]] = {}
         self.back_floats: dict[Loop, set[Loop]] = {}
@@ -102,7 +105,7 @@ class Loop(_Base_Loop):
         if loop is None:
             return None
         else:
-            return cast(Loop, loop)
+            return loop
 
     def next_loop_on_yarn(self) -> Loop:
         """Get the loop that follows this loop on the same yarn.
@@ -132,10 +135,57 @@ class Loop(_Base_Loop):
         else:
             self.parent_loops.append(parent)
 
-    def __str__(self) -> str:
-        """Get a string representation of this loop.
+    @property
+    def loop_id(self) -> int:
+        """Get the unique identifier of this loop.
 
         Returns:
-            str: String representation showing the loop ID and associated yarn.
+            int: The id of the loop.
         """
-        return f"{self.loop_id} on yarn {self.yarn}"
+        return self._loop_id
+
+    def __hash__(self) -> int:
+        """Return hash value based on loop_id for use in sets and dictionaries.
+
+        Returns:
+            int: Hash value of the loop_id.
+        """
+        return self.loop_id
+
+    def __int__(self) -> int:
+        """Convert loop to integer representation using loop_id.
+
+        Returns:
+            int: The loop_id as an integer.
+        """
+        return self.loop_id
+
+    def __eq__(self, other: Loop) -> bool:
+        """Check equality with another base loop based on loop_id and type.
+
+        Args:
+            other (Loop): The other loop to compare with.
+
+        Returns:
+            bool: True if both loops have the same class and loop_id, False otherwise.
+        """
+        return isinstance(other, other.__class__) and self.loop_id == other.loop_id
+
+    def __lt__(self, other: Loop | int) -> bool:
+        """Compare loop_id with another loop or integer for ordering.
+
+        Args:
+            other (Loop | int): The other loop or integer to compare with.
+
+        Returns:
+            bool: True if this loop's id is less than the other's id.
+        """
+        return int(self.loop_id) < int(other)
+
+    def __repr__(self) -> str:
+        """Return string representation of the loop.
+
+        Returns:
+            str: String representation showing "Loop {loop_id}".
+        """
+        return f"Loop {self.loop_id}"

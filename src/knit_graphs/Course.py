@@ -4,10 +4,12 @@ This module contains the Course class which represents a horizontal row of loops
 """
 from __future__ import annotations
 
-from typing import Iterator, cast
+from typing import TYPE_CHECKING, Iterator, cast
 
-from knit_graphs._base_classes import _Base_Knit_Graph
 from knit_graphs.Loop import Loop
+
+if TYPE_CHECKING:
+    from knit_graphs.Knit_Graph import Knit_Graph
 
 
 class Course:
@@ -17,14 +19,31 @@ class Course:
     It maintains an ordered list of loops and provides methods for analyzing the structure and relationships between courses in the knitted fabric.
     """
 
-    def __init__(self, _knit_graph: _Base_Knit_Graph) -> None:
+    def __init__(self, knit_graph: Knit_Graph) -> None:
         """Initialize an empty course associated with a knit graph.
 
         Args:
-            _knit_graph (Knit_Graph): The knit graph that this course belongs to.
+            knit_graph (Knit_Graph): The knit graph that this course belongs to.
         """
-        self.loops_in_order: list[Loop] = []
+        self._knit_graph: Knit_Graph = knit_graph
+        self._loops_in_order: list[Loop] = []
         self._loop_set: set[Loop] = set()
+
+    @property
+    def loops_in_order(self) -> list[Loop]:
+        """
+        Returns:
+            list[Loop]: The list of loops in this course.
+        """
+        return self._loops_in_order
+
+    @property
+    def knit_graph(self) -> Knit_Graph:
+        """
+        Returns:
+            Knit_Graph: The knit graph that this course belongs to.
+        """
+        return self._knit_graph
 
     def add_loop(self, loop: Loop, index: int | None = None) -> None:
         """Add a loop to the course at the specified index or at the end.
