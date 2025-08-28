@@ -18,9 +18,9 @@ authors = ["Megan Hofmann <m.hofmann@northeastern.edu>"]
 maintainers = ["Megan Hofmann <m.hofmann@northeastern.edu>"]
 license = "MIT"                     # License type (shows up on PyPI)
 readme = "README.md"                # File to use as long description on PyPI
-homepage = "https://mhofmann-Khoury.github.io/knit-graphs/"
-repository = "https://github.com/mhofmann-Khoury/knit-graphs"
-documentation = "https://mhofmann-Khoury.github.io/knit-graphs/"
+homepage = "https://mhofmann-khoury.github.io/knit_graph/"
+repository = "https://github.com/mhofmann-Khoury/knit_graph/"
+documentation = "https://mhofmann-khoury.github.io/knit_graph/"
 keywords = ["ACT Lab", "Northeastern University", "knit", "machine knit", "fabrication", "textile"]
 classifiers = [                     # PyPI classifiers for categorization
     "Development Status :: 3 - Alpha",                     # Update as project matures (Alpha -> Beta -> Production/Stable)
