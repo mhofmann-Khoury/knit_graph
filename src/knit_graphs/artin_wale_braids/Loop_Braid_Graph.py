@@ -19,6 +19,7 @@ class Loop_Braid_Graph:
     Attributes:
         loop_crossing_graph (DiGraph): A NetworkX directed graph storing loop crossing relationships with crossing direction attributes.
     """
+    _CROSSING = "crossing"
 
     def __init__(self) -> None:
         """Initialize an empty loop braid graph with no crossings."""
@@ -33,6 +34,15 @@ class Loop_Braid_Graph:
             crossing_direction (Crossing_Direction): The direction of the crossing (over, under, or none) between the loops.
         """
         self.loop_crossing_graph.add_edge(left_loop, right_loop, crossing=crossing_direction)
+
+    def remove_loop(self, loop: Loop) -> None:
+        """
+        Removes any crossings that involve the given loop.
+        Args:
+            loop (Loop): The loop to remove.
+        """
+        if loop in self:
+            self.loop_crossing_graph.remove_node(loop)
 
     def __contains__(self, item: Loop | tuple[Loop, Loop]) -> bool:
         """Check if a loop or loop pair is contained in the braid graph.
@@ -92,4 +102,4 @@ class Loop_Braid_Graph:
         """
         if not self.loop_crossing_graph.has_edge(left_loop, right_loop):
             self.add_crossing(left_loop, right_loop, Crossing_Direction.No_Cross)
-        return cast(Crossing_Direction, self.loop_crossing_graph[left_loop][right_loop]['crossing'])
+        return cast(Crossing_Direction, self.loop_crossing_graph[left_loop][right_loop][self._CROSSING])

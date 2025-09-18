@@ -82,6 +82,8 @@ class Yarn:
         loop_graph (DiGraph): The directed graph loops connected by yarn-wise float edges.
         properties (Yarn_Properties): The physical and visual properties of this yarn.
     """
+    FRONT_LOOPS: str = "Front_Loops"
+    _BACK_LOOPS: str = "Back_Loops"
 
     def __init__(self, yarn_properties: None | Yarn_Properties = None, knit_graph: None | Knit_Graph = None):
         """Initialize a yarn with the specified properties and optional knit graph association.
@@ -141,7 +143,7 @@ class Yarn:
                 self.add_loop_in_front_of_float(front_loop, v, u)
             else:
                 return
-        self.loop_graph.edges[u, v]["Front_Loops"].add(front_loop)
+        self.loop_graph.edges[u, v][self.FRONT_LOOPS].add(front_loop)
         front_loop.add_loop_in_front_of_float(u, v)
 
     def add_loop_behind_float(self, back_loop: Loop, u: Loop, v: Loop) -> None:
@@ -157,7 +159,7 @@ class Yarn:
                 self.add_loop_behind_float(back_loop, v, u)
             else:
                 return
-        self.loop_graph.edges[u, v]["Back_Loops"].add(back_loop)
+        self.loop_graph.edges[u, v][self._BACK_LOOPS].add(back_loop)
         back_loop.add_loop_behind_float(u, v)
 
     def get_loops_in_front_of_float(self, u: Loop, v: Loop) -> set[Loop]:
@@ -176,7 +178,7 @@ class Yarn:
             else:
                 return set()
         else:
-            return cast(set[Loop], self.loop_graph.edges[u, v]['Front_Loops'])
+            return cast(set[Loop], self.loop_graph.edges[u, v][self.FRONT_LOOPS])
 
     def get_loops_behind_float(self, u: Loop, v: Loop) -> set[Loop]:
         """Get all loops positioned behind the float between two loops.
@@ -194,7 +196,7 @@ class Yarn:
             else:
                 return set()
         else:
-            return cast(set[Loop], self.loop_graph.edges[u, v]['Back_Loops'])
+            return cast(set[Loop], self.loop_graph.edges[u, v][self._BACK_LOOPS])
 
     @property
     def last_loop(self) -> Loop | None:
@@ -289,6 +291,41 @@ class Yarn:
             return 0
         else:
             return self.last_loop.loop_id + 1
+
+    def remove_loop(self, loop: Loop) -> None:
+        """
+        Remove the given loop from the yarn.
+        Reconnects any neighboring loops to form a new float with the positioned in-front-of or behind the original floats positioned accordingly.
+        Resets the first_loop and last_loop properties if the removed loop was the tail of the yarn.
+        Args:
+            loop (Loop): The loop to remove from the yarn.
+
+        Raises:
+            KeyError: The given loop does not exist in the yarn.
+        """
+        if loop not in self:
+            raise KeyError(f'Loop {loop} does not exist on yarn {self}.')
+        prior_loop = self.prior_loop(loop)
+        next_loop = self.next_loop(loop)
+        if isinstance(prior_loop, Loop) and isinstance(next_loop, Loop):  # Loop is between two floats to be merged.
+            front_of_float_loops = self.get_loops_in_front_of_float(prior_loop, loop)
+            front_of_float_loops.update(self.get_loops_in_front_of_float(loop, next_loop))
+            back_of_float_loops = self.get_loops_behind_float(prior_loop, loop)
+            back_of_float_loops.update(self.get_loops_behind_float(loop, next_loop))
+            self.loop_graph.remove_node(loop)
+            self.loop_graph.add_edge(prior_loop, next_loop, Front_Loops=front_of_float_loops, Back_Loops=back_of_float_loops)
+            for front_loop in front_of_float_loops:
+                front_loop.add_loop_in_front_of_float(prior_loop, next_loop)
+            for back_loop in back_of_float_loops:
+                back_loop.add_loop_behind_float(prior_loop, next_loop)
+            return
+        if next_loop is None:  # This was the last loop, make the prior loop the last loop.
+            assert loop is self.last_loop
+            self._last_loop = prior_loop
+        if prior_loop is None:  # This was the first loop, make the next loop the first loop.
+            assert loop is self.first_loop
+            self._first_loop = next_loop
+        self.loop_graph.remove_node(loop)
 
     def add_loop_to_end(self, loop: Loop) -> Loop:
         """Add an existing loop to the end of this yarn and associated knit graph.

@@ -12,7 +12,7 @@ build-backend = "poetry.core.masonry.api"  # Use Poetry's build system
 # All the information about your project that will appear on PyPI
 [tool.poetry]
 name = "knit-graphs"
-version = "0.0.9"
+version = "0.0.10"
 description = "A graph representation of knitted structures where each loop is a node and edges represent yarn and stitch relationships."
 authors = ["Megan Hofmann <m.hofmann@northeastern.edu>"]
 maintainers = ["Megan Hofmann <m.hofmann@northeastern.edu>"]
@@ -52,8 +52,6 @@ include = [
     "README.md",                    # Project description
     "LICENSE",                      # License file
     "docs/**/*",                    # All documentation files
-    # "src/**/data/**/*",           # Example: include data files
-    # "src/**/templates/**/*",      # Example: include template files
 ]
 
 # Exclude files from the distribution package (keeps package size down)
@@ -80,29 +78,11 @@ exclude = [
 python = ">=3.11,<3.14"
 networkx = ">=3.5"
 plotly = "^6.3.0"
-# Examples:
-# requests = "^2.31.0"              # For HTTP requests
-# pydantic = "^2.0.0"               # For data validation
-# click = "^8.1.0"                  # For CLI applications
-# numpy = "^1.24.0"                 # For numerical computing
-# pandas = "^2.0.0"                 # For data manipulation
-
-# =============================================================================
-# OPTIONAL DEPENDENCIES (EXTRAS)
-# =============================================================================
-# Optional dependency groups that users can install with pip install "package[extra]"
-#[tool.poetry.extras]
-# Examples:
-# cli = ["click", "rich"]           # For command-line interface features
-# viz = ["matplotlib", "plotly"]    # For visualization features
-# dev = ["pytest", "mypy"]          # For development tools (though prefer dev dependencies)
 
 # =============================================================================
 # DEVELOPMENT DEPENDENCIES
 # =============================================================================
 # These packages are only needed during development and testing
-
-
 [tool.poetry.group.dev.dependencies]
 importlib-resources = ">=6.5.2"
 
@@ -142,34 +122,6 @@ tox = "^4.11.0"                    # Test across multiple Python versions locall
 # RELEASE AND BUILD TOOLS
 # -------------------------------------------------------------------------
 build = "^0.10.0"                  # PEP 517 build tool (for creating distributions)
-
-# =============================================================================
-# DOCUMENTATION-SPECIFIC DEPENDENCIES
-# =============================================================================
-# Separate dependency group for building documentation (allows selective installation)
-[tool.poetry.group.docs.dependencies]
-sphinx = "^7.1.0"                    # Documentation generator (main tool)
-sphinx-rtd-theme = "^1.3.0"         # Professional-looking theme
-sphinx-autodoc-typehints = "^1.24.0" # Automatically include type hints in docs
-sphinx-autoapi = "^3.0.0"           # Automatically generates API documentation
-myst-parser = "^2.0.0"              # Support for Markdown files in documentation
-
-# =============================================================================
-# COMMAND LINE SCRIPTS
-# =============================================================================
-# Define command-line entry points for your package
-#[tool.poetry.scripts]
-# Example:
-# your-command = "your_project_name.cli:main"  # Creates 'your-command' executable
-
-# =============================================================================
-# PROJECT URLS FOR PYPI
-# =============================================================================
-# Additional URLs that will be displayed on your PyPI project page
-#[tool.poetry.urls]
-#"Bug Tracker" = "https://github.com/mhofmann-Khoury/knit-graphs/issues"
-#"Changelog" = "https://github.com/mhofmann-Khoury/knit-graphs/blob/main/CHANGELOG.md"
-#"Discussions" = "https://github.com/your-username/your-project-name/discussions"
 
 # =============================================================================
 # ISORT IMPORT SORTER CONFIGURATION

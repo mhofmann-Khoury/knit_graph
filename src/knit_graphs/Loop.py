@@ -5,7 +5,7 @@ Loops are the fundamental building blocks of knitted structures and maintain rel
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from knit_graphs.Yarn import Yarn
@@ -47,13 +47,30 @@ class Loop:
         Args:
             u (Loop): The first loop in the float pair.
             v (Loop): The second loop in the float pair.
+
+        Raises:
+            ValueError: If u and v are not on the same yarn.
         """
+        if u.yarn != v.yarn:
+            raise ValueError("Loops of a float must share a yarn.")
         if u not in self.back_floats:
             self.back_floats[u] = set()
         if v not in self.back_floats:
             self.back_floats[v] = set()
         self.back_floats[u].add(v)
         self.back_floats[v].add(u)
+
+    def remove_loop_from_front_floats(self) -> None:
+        """
+        Removes this loop from being in front of all marked floats. Mutates the yarns that own edges of those floats.
+        """
+        visited: set[Loop] = set()
+        for u, v_loops in self.front_floats.items():
+            visited.add(u)
+            for v in v_loops:
+                if v not in visited and v in u.yarn:  # float shares a yarn
+                    u.yarn.loop_graph.edges[u, v]["Back_Loops"].remove(self)
+        self.front_floats = {}
 
     def add_loop_behind_float(self, u: Loop, v: Loop) -> None:
         """Set this loop to be behind the float between loops u and v.
@@ -63,13 +80,30 @@ class Loop:
         Args:
             u (Loop): The first loop in the float pair.
             v (Loop): The second loop in the float pair.
+
+        Raises:
+            ValueError: If u and v are not on the same yarn.
         """
+        if u.yarn != v.yarn:
+            raise ValueError("Loops of a float must share a yarn.")
         if u not in self.front_floats:
             self.front_floats[u] = set()
         if v not in self.front_floats:
             self.front_floats[v] = set()
         self.front_floats[u].add(v)
         self.front_floats[v].add(u)
+
+    def remove_loop_from_back_floats(self) -> None:
+        """
+        Removes this loop from being behind of all marked floats. Mutates the yarns that own edges of those floats.
+        """
+        visited = set()
+        for u, v_loops in self.back_floats.items():
+            visited.add(u)
+            for v in v_loops:
+                if v not in visited and v in u.yarn:  # float shares a yarn
+                    u.yarn.loop_graph.edges[u, v]["Front_Loops"].remove(self)
+        self.back_floats = {}
 
     def is_in_front_of_float(self, u: Loop, v: Loop) -> bool:
         """Check if this loop is positioned in front of the float between loops u and v.
@@ -101,19 +135,25 @@ class Loop:
         Returns:
             Loop | None: The prior loop on the yarn, or None if this is the first loop on the yarn.
         """
-        loop = self.yarn.prior_loop(self)
-        if loop is None:
-            return None
-        else:
-            return loop
+        return self.yarn.prior_loop(self)
 
-    def next_loop_on_yarn(self) -> Loop:
+    def next_loop_on_yarn(self) -> Loop | None:
         """Get the loop that follows this loop on the same yarn.
 
         Returns:
-            Loop: The next loop on the yarn, or None if this is the last loop on the yarn.
+            Loop | None: The next loop on the yarn, or None if this is the last loop on the yarn.
         """
-        return cast(Loop, self.yarn.next_loop(self))
+        return self.yarn.next_loop(self)
+
+    def remove_parent_loops(self) -> list[Loop]:
+        """
+        Removes the list of parent loops from this loop.
+        Returns:
+            list[Loop]: The list of parent loops that were removed.
+        """
+        parents = self.parent_loops
+        self.parent_loops = []
+        return parents
 
     def has_parent_loops(self) -> bool:
         """Check if this loop has any parent loops connected through stitch edges.
@@ -134,6 +174,31 @@ class Loop:
             self.parent_loops.insert(stack_position, parent)
         else:
             self.parent_loops.append(parent)
+
+    def remove_parent(self, parent: Loop) -> None:
+        """
+        Removes the given parent loop from the set of parents of this loop.
+        If the given loop is not a parent of this loop, nothing happens.
+        Args:
+            parent (Loop): The parent loop to remove.
+        """
+        if parent in self.parent_loops:
+            self.parent_loops.remove(parent)
+
+    def ancestor_loops(self) -> set[Loop]:
+        """
+        Returns:
+            set[Loop]: The set of loops that initiate all wales that lead to this loop. The empty set if this loop has no parents.
+        """
+        if not self.has_parent_loops():
+            return set()
+        ancestors = set()
+        for parent_loop in self.parent_loops:
+            if parent_loop.has_parent_loops():
+                ancestors.update(parent_loop.ancestor_loops())
+            else:
+                ancestors.add(parent_loop)
+        return ancestors
 
     @property
     def loop_id(self) -> int:

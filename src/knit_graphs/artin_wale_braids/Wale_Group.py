@@ -24,83 +24,65 @@ class Wale_Group:
     Attributes:
         wale_graph (DiGraph): A directed graph representing the relationships between wales in this group.
         stitch_graph (DiGraph): A directed graph of all individual stitch connections within this wale group.
-        terminal_wale (Wale | None): The topmost wale in this group, typically where multiple wales converge.
         top_loops (dict[Loop, Wale]): Mapping from the last (top) loop of each wale to the wale itself.
         bottom_loops (dict[Loop, Wale]): Mapping from the first (bottom) loop of each wale to the wale itself.
     """
 
-    def __init__(self, terminal_wale: Wale, knit_graph: Knit_Graph):
+    def __init__(self, terminal_loop: Loop, knit_graph: Knit_Graph):
         """Initialize a wale group starting from a terminal wale and building downward.
 
         Args:
-            terminal_wale (Wale): The topmost wale in the group, used as the starting point for building the complete group structure.
+            terminal_loop (Loop): The terminal loop of this wale-group. All the wales in the group connect up to this loop.
             knit_graph (Knit_Graph): The parent knit graph that contains this wale group.
         """
         self.wale_graph: DiGraph = DiGraph()
         self.stitch_graph: DiGraph = DiGraph()
         self._knit_graph: Knit_Graph = knit_graph
-        self.terminal_wale: Wale | None = terminal_wale
+        self._terminal_loop: Loop = terminal_loop
         self.top_loops: dict[Loop, Wale] = {}
         self.bottom_loops: dict[Loop, Wale] = {}
-        self.build_group_from_top_wale(terminal_wale)
+        self._build_wale_group()
 
-    def add_wale(self, wale: Wale) -> None:
-        """Add a wale to the group and connect it to existing wales through shared loops.
-
-        This method adds the wale to the group's graphs and establishes connections with other wales based on shared loops at their endpoints.
-
-        Args:
-            wale (Wale): The wale to add to this group. Empty wales are ignored and not added.
+    @property
+    def terminal_loop(self) -> Loop:
         """
-        if len(wale) == 0:
-            return  # This wale is empty and therefore there is nothing to add to the wale group
-        self.wale_graph.add_node(wale)
-        for u, v in wale.stitches.edges:
-            self.stitch_graph.add_edge(u, v, pull_direction=wale.get_stitch_pull_direction(u, v))
-        for top_loop, other_wale in self.top_loops.items():
-            if top_loop == wale.first_loop:
-                self.wale_graph.add_edge(other_wale, wale)
-        for bot_loop, other_wale in self.bottom_loops.items():
-            if bot_loop == wale.last_loop:
-                self.wale_graph.add_edge(wale, other_wale)
-        assert isinstance(wale.last_loop, Loop)
-        self.top_loops[wale.last_loop] = wale
-        assert isinstance(wale.first_loop, Loop)
-        self.bottom_loops[wale.first_loop] = wale
-
-    def add_parent_wales(self, wale: Wale) -> list[Wale]:
-        """Find and add all parent wales that created the given wale through decrease operations.
-
-        This method identifies wales that end at the loops that are parents of this wale's first loop, representing the wales that were decreased together to form the given wale.
-
-        Args:
-            wale (Wale): The wale to find and add parent wales for.
-
         Returns:
-            list[Wale]: The list of parent wales that were found and added to the group.
+            Loop: The loop that terminates all wales in this group.
         """
-        added_wales = []
-        for parent_loop in cast(Loop, wale.first_loop).parent_loops:
-            parent_wales = self._knit_graph.get_wales_ending_with_loop(parent_loop)
-            for parent_wale in parent_wales:
-                self.add_wale(parent_wale)
-            added_wales.extend(parent_wales)
-        return added_wales
+        return self._terminal_loop
 
-    def build_group_from_top_wale(self, top_wale: Wale) -> None:
-        """Build the complete wale group by recursively finding all parent wales from the terminal wale.
+    def _build_wale_group(self) -> None:
+        full_wales = self._knit_graph.get_wales_ending_with_loop(self._terminal_loop)
+        # Build up the stitch graph.
+        for wale in full_wales:
+            u_loops: list[Loop] = cast(list[Loop], wale[:-1])
+            v_loops: list[Loop] = cast(list[Loop], wale[1:])
+            for u, v in zip(u_loops, v_loops):
+                self.stitch_graph.add_edge(u, v, pull_direction=self._knit_graph.get_pull_direction(u, v))
+        wales_to_split = full_wales
+        while len(wales_to_split) > 0:
+            wale_to_split = wales_to_split.pop()
+            split = False
+            upper_loops = cast(list[Loop], wale_to_split[1:])
+            for loop in upper_loops:  # skip first loop in each wale as it may be already connected to a discovered decrease.
+                if len(loop.parent_loops) > 1:  # Focal of a decrease.
+                    clean_wale, remaining_wale = wale_to_split.split_wale(loop)
+                    if not self.wale_graph.has_node(clean_wale):
+                        self._add_wale(clean_wale)
+                    if isinstance(remaining_wale, Wale):
+                        wales_to_split.add(remaining_wale)
+                    split = True
+                    break
+            if not split:
+                self._add_wale(wale_to_split)
+        for bot_loop, lower_wale in self.bottom_loops.items():
+            if lower_wale.last_loop in self.bottom_loops:
+                self.wale_graph.add_edge(lower_wale, self.bottom_loops[lower_wale.last_loop])
 
-        This method starts with the terminal wale and recursively adds all parent wales, building the complete tree structure of wales that contribute to the terminal wale through decrease operations.
-
-        Args:
-            top_wale (Wale): The terminal wale at the top of the group structure.
-        """
-        self.add_wale(top_wale)
-        added_wales = self.add_parent_wales(top_wale)
-        while len(added_wales) > 0:
-            next_wale = added_wales.pop()
-            more_wales = self.add_parent_wales(next_wale)
-            added_wales.extend(more_wales)
+    def _add_wale(self, wale: Wale) -> None:
+        self.wale_graph.add_node(wale)
+        self.top_loops[wale.last_loop] = wale
+        self.bottom_loops[wale.first_loop] = wale
 
     def get_loops_over_courses(self) -> list[list[Loop]]:
         """Get loops organized by their course (horizontal row) within this wale group.
@@ -110,11 +92,8 @@ class Wale_Group:
         Returns:
             list[list[Loop]]: A list where each inner list contains all loops that belong to the same course, ordered from top to bottom courses. Returns empty list if there is no terminal wale.
         """
-        if self.terminal_wale is None:
-            return []
-        top_loop: Loop = cast(Loop, self.terminal_wale.last_loop)
         courses: list[list[Loop]] = []
-        cur_course: list[Loop] = [top_loop]
+        cur_course: list[Loop] = [self._terminal_loop]
         while len(cur_course) > 0:
             courses.append(cur_course)
             next_course = []
@@ -136,3 +115,37 @@ class Wale_Group:
             path_len = sum(len(successor) for successor in dfs_preorder_nodes(self.wale_graph, wale))
             max_len = max(max_len, path_len)
         return max_len
+
+    def __hash__(self) -> int:
+        """
+        Returns:
+            int: Hash value of the terminal loop of this group.
+        """
+        return hash(self._terminal_loop)
+
+    def __contains__(self, item: Loop | int | Wale) -> bool:
+        """
+        Args:
+            item (Loop | int | Wale): The item to check for in the wale group.
+
+        Returns:
+            bool: True if the given loop, loop_id (int), or wale is in this group.
+        """
+        if isinstance(item, Loop) or isinstance(item, int):
+            return item in self.stitch_graph.nodes
+        else:  # isinstance(item, Wale):
+            return item in self.wale_graph
+
+    def __str__(self) -> str:
+        """
+        Returns:
+            str: The string representation of this wale group.
+        """
+        return f"WG({self.terminal_loop})"
+
+    def __repr__(self) -> str:
+        """
+        Returns:
+            str: The string representation of this wale group.
+        """
+        return str(self)
