@@ -213,7 +213,7 @@ jobs:
           path: docs/build/html/
 
       - name: Check for broken links
-        uses: lycheeverse/lychee-action@v1
+        uses: lycheeverse/lychee-action@v2.1.0  # Pin to specific secure version
         with:
           args: |
             --base docs/build/html/
