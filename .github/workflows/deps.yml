@@ -35,8 +35,8 @@ jobs:
       - name: Install dependencies
         run: poetry install --with dev
 
-      - name: Install poetry-relax
-        run: poetry run pip install poetry-relax
+      - name: Install poetry-relax globally
+        run: pip install poetry-relax
 
       - name: Check current dependency constraints
         run: |
@@ -47,12 +47,12 @@ jobs:
         id: check_relax
         run: |
           echo "Checking what can be relaxed..."
-          poetry run poetry-relax --check --only main || echo "Dependencies can be relaxed"
+          poetry relax --check --only main || echo "Dependencies can be relaxed"
 
       - name: Relax runtime dependencies only
         run: |
           echo "Relaxing runtime dependencies..."
-          poetry run poetry-relax --only main
+          poetry relax --only main
 
       - name: Update lock file with relaxed dependencies
         run: poetry lock --no-update
