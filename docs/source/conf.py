@@ -59,7 +59,6 @@ extensions = [
     "sphinx.ext.coverage",  # Check documentation coverage
     "sphinx.ext.doctest",  # Test code snippets in documentation
     # Third-party extensions (these need to be installed)
-    "sphinx_autodoc_typehints",  # Better type hint rendering
     "myst_parser",  # Support for Markdown files (optional)
 ]
 
@@ -157,6 +156,10 @@ autodoc_mock_imports = [
     # 'some_optional_dependency',
 ]
 
+# Enable type hints in signatures
+autodoc_typehints = "signature"  # Show type hints in function signatures
+autodoc_typehints_description_target = "documented"  # Where to show type info
+
 # =============================================================================
 # AUTOSUMMARY CONFIGURATION
 # =============================================================================
@@ -205,10 +208,8 @@ intersphinx_mapping = {
 # =============================================================================
 # Controls how type hints are displayed in documentation
 
-typehints_fully_qualified = False  # Use short names for types
+# Note: These settings work with sphinx.ext.autodoc built-in type hint support
 always_document_param_types = True  # Always show parameter types
-typehints_document_rtype = True  # Document return types
-typehints_use_rtype = True  # Use :rtype: directive for return types
 
 # =============================================================================
 # TODO EXTENSION CONFIGURATION
