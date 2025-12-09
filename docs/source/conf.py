@@ -97,7 +97,6 @@ html_static_path = ["_static"]
 # Theme-specific options
 html_theme_options = {
     "logo_only": False,  # Show project name with logo
-    "display_version": True,  # Show version in sidebar
     "prev_next_buttons_location": "bottom",  # Navigation button placement
     "style_external_links": True,  # Style external links differently
     "vcs_pageview_mode": "",  # Version control integration
