@@ -2,6 +2,7 @@
 
 This module provides the Wale_Braid_Word class which represents a single step in a braid operation, describing how loops cross over each other within a course of knitting.
 """
+
 from __future__ import annotations
 
 from knit_graphs.artin_wale_braids.Crossing_Direction import Crossing_Direction
@@ -59,7 +60,7 @@ class Wale_Braid_Word:
         new_crossings = {i: ~c for i, c in self.crossings.items()}
         return Wale_Braid_Word(new_loops, new_crossings)
 
-    def __eq__(self, other: Wale_Braid_Word) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Check equality with another wale braid word.
 
         Two braid words are equal if they have the same loops in the same order and the same crossing operations at the same indices.
@@ -70,13 +71,13 @@ class Wale_Braid_Word:
         Returns:
             bool: True if both braid words have identical loops, loop ordering, and crossing operations, False otherwise.
         """
-        if (len(self) != len(other)
-                or any(l != o for l, o in zip(self.loops, other.loops))
-                or any(i not in other.crossings for i in self.crossings)
-                or any(other.crossings[i] != cd for i, cd in self.crossings.items())):
-            return False
-        else:
-            return True
+        return (
+            isinstance(other, Wale_Braid_Word)
+            and len(self) == len(other)
+            and all(l == o for l, o in zip(self.loops, other.loops, strict=False))
+            and all(i in other.crossings for i in self.crossings)
+            and all(other.crossings[i] == cd for i, cd in self.crossings.items())
+        )
 
     def is_inversion(self, other: Wale_Braid_Word) -> bool:
         """Check if another braid word is the inverse of this braid word.

@@ -2,6 +2,7 @@
 
 This module provides the Loop_Braid_Graph class which tracks crossing relationships between loops in cable knitting patterns using a directed graph structure.
 """
+
 from typing import cast
 
 from networkx import DiGraph
@@ -19,6 +20,7 @@ class Loop_Braid_Graph:
     Attributes:
         loop_crossing_graph (DiGraph): A NetworkX directed graph storing loop crossing relationships with crossing direction attributes.
     """
+
     _CROSSING = "crossing"
 
     def __init__(self) -> None:
@@ -70,8 +72,11 @@ class Loop_Braid_Graph:
         if left_loop not in self:
             return []
         else:
-            return [rl for rl in self.loop_crossing_graph.successors(left_loop)
-                    if self.get_crossing(left_loop, rl) is not Crossing_Direction.No_Cross]
+            return [
+                rl
+                for rl in self.loop_crossing_graph.successors(left_loop)
+                if self.get_crossing(left_loop, rl) is not Crossing_Direction.No_Cross
+            ]
 
     def right_crossing_loops(self, right_loop: Loop) -> list[Loop]:
         """Get all loops that cross with the given loop when it is on the right side.
@@ -85,8 +90,11 @@ class Loop_Braid_Graph:
         if right_loop not in self:
             return []
         else:
-            return [l for l in self.loop_crossing_graph.predecessors(right_loop)
-                    if self.get_crossing(l, right_loop) is not Crossing_Direction.No_Cross]
+            return [
+                l
+                for l in self.loop_crossing_graph.predecessors(right_loop)
+                if self.get_crossing(l, right_loop) is not Crossing_Direction.No_Cross
+            ]
 
     def get_crossing(self, left_loop: Loop, right_loop: Loop) -> Crossing_Direction:
         """Get the crossing direction between two loops, creating a no-cross edge if none exists.
@@ -102,4 +110,7 @@ class Loop_Braid_Graph:
         """
         if not self.loop_crossing_graph.has_edge(left_loop, right_loop):
             self.add_crossing(left_loop, right_loop, Crossing_Direction.No_Cross)
-        return cast(Crossing_Direction, self.loop_crossing_graph[left_loop][right_loop][self._CROSSING])
+        return cast(
+            Crossing_Direction,
+            self.loop_crossing_graph[left_loop][right_loop][self._CROSSING],
+        )

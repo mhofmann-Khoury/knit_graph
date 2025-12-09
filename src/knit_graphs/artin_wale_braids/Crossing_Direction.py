@@ -2,6 +2,7 @@
 
 This module defines the Crossing_Direction enumeration which represents the different ways loops can cross over or under each other in cable knitting patterns.
 """
+
 from __future__ import annotations
 
 from enum import Enum
@@ -13,6 +14,7 @@ class Crossing_Direction(Enum):
     This enumeration represents the three possible crossing relationships between loops: crossing over to the right, crossing under to the right, or no crossing at all.
     These directions are fundamental to representing cable structures in knitted fabrics.
     """
+
     Over_Right = "+"
     Under_Right = "-"
     No_Cross = "|"

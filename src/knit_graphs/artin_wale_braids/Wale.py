@@ -2,9 +2,11 @@
 
 This module defines the Wale class which represents a vertical column of stitches in a knitted structure, maintaining the sequence and relationships between loops in that column.
 """
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterator, cast
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, cast
 
 from networkx import DiGraph, dfs_preorder_nodes
 
@@ -26,6 +28,7 @@ class Wale:
         last_loop (Loop | None): The last (top) loop in the wale sequence.
         stitches (DiGraph): Stores the directed graph of stitch connections within this wale.
     """
+
     _PULL_DIRECTION: str = "pull_direction"
 
     def __init__(self, first_loop: Loop, knit_graph: Knit_Graph, end_loop: Loop | None = None) -> None:
@@ -60,7 +63,11 @@ class Wale:
         Args:
             loop (Loop): The loop to add to the end of the wale.
         """
-        self.stitches.add_edge(self.last_loop, loop, pull_direction=self._knit_graph.get_pull_direction(self.last_loop, loop))
+        self.stitches.add_edge(
+            self.last_loop,
+            loop,
+            pull_direction=self._knit_graph.get_pull_direction(self.last_loop, loop),
+        )
         self.last_loop = loop
 
     def get_stitch_pull_direction(self, u: Loop, v: Loop) -> Pull_Direction:
@@ -91,12 +98,14 @@ class Wale:
                 * The second wale (from split_loop to end). This will be None if the split_loop is not found.
         """
         if split_loop in self:
-            return (Wale(self.first_loop, self._knit_graph, end_loop=split_loop),
-                    Wale(split_loop, self._knit_graph, end_loop=self.last_loop))
+            return (
+                Wale(self.first_loop, self._knit_graph, end_loop=split_loop),
+                Wale(split_loop, self._knit_graph, end_loop=self.last_loop),
+            )
         else:
             return self, None
 
-    def __eq__(self, other: Wale) -> bool:
+    def __eq__(self, other: object) -> bool:
         """
         Args:
             other (Wale): The wale to compare.
@@ -104,9 +113,9 @@ class Wale:
         Returns:
             bool: True if all the loops in both wales are present and in the same order. False, otherwise.
         """
-        if len(self) != len(other):
+        if not isinstance(other, Wale) or len(self) != len(other):
             return False
-        return not any(l != o for l, o in zip(self, other))
+        return not any(l != o for l, o in zip(self, other, strict=False))
 
     def __len__(self) -> int:
         """Get the number of loops in this wale.

@@ -2,6 +2,7 @@
 
 This module provides the Wale_Group class which represents a collection of interconnected wales that are joined through decrease operations, forming a tree-like structure of vertical stitch columns.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
@@ -57,14 +58,16 @@ class Wale_Group:
         for wale in full_wales:
             u_loops: list[Loop] = cast(list[Loop], wale[:-1])
             v_loops: list[Loop] = cast(list[Loop], wale[1:])
-            for u, v in zip(u_loops, v_loops):
+            for u, v in zip(u_loops, v_loops, strict=False):
                 self.stitch_graph.add_edge(u, v, pull_direction=self._knit_graph.get_pull_direction(u, v))
         wales_to_split = full_wales
         while len(wales_to_split) > 0:
             wale_to_split = wales_to_split.pop()
             split = False
             upper_loops = cast(list[Loop], wale_to_split[1:])
-            for loop in upper_loops:  # skip first loop in each wale as it may be already connected to a discovered decrease.
+            for (
+                loop
+            ) in upper_loops:  # skip first loop in each wale as it may be already connected to a discovered decrease.
                 if len(loop.parent_loops) > 1:  # Focal of a decrease.
                     clean_wale, remaining_wale = wale_to_split.split_wale(loop)
                     if not self.wale_graph.has_node(clean_wale):
@@ -75,7 +78,7 @@ class Wale_Group:
                     break
             if not split:
                 self._add_wale(wale_to_split)
-        for bot_loop, lower_wale in self.bottom_loops.items():
+        for _bot_loop, lower_wale in self.bottom_loops.items():
             if lower_wale.last_loop in self.bottom_loops:
                 self.wale_graph.add_edge(lower_wale, self.bottom_loops[lower_wale.last_loop])
 
@@ -111,7 +114,7 @@ class Wale_Group:
             int: The height of the wale group from the base loops to the tallest terminal, measured in total number of loops.
         """
         max_len = 0
-        for bot_loop, wale in self.bottom_loops.items():
+        for _bot_loop, wale in self.bottom_loops.items():
             path_len = sum(len(successor) for successor in dfs_preorder_nodes(self.wale_graph, wale))
             max_len = max(max_len, path_len)
         return max_len
@@ -131,7 +134,7 @@ class Wale_Group:
         Returns:
             bool: True if the given loop, loop_id (int), or wale is in this group.
         """
-        if isinstance(item, Loop) or isinstance(item, int):
+        if isinstance(item, (Loop, int)):
             return item in self.stitch_graph.nodes
         else:  # isinstance(item, Wale):
             return item in self.wale_graph

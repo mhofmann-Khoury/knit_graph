@@ -3,6 +3,7 @@
 This test suite ensures that visualization functions work correctly without
 creating socket connection issues that can cause browser hangs.
 """
+
 import os
 from unittest import TestCase
 
@@ -24,7 +25,7 @@ class Test_Knitting_Visualizers_Safe(TestCase):
     def setUp(self):
         """Set up test environment."""
         # Set environment variable to indicate we're testing
-        os.environ['TESTING'] = '1'
+        os.environ["TESTING"] = "1"
 
         # Control visualization display - set to True only for local debugging
         self.show_visualization = False  # Set this to True for local testing if you want to see figures
@@ -35,8 +36,8 @@ class Test_Knitting_Visualizers_Safe(TestCase):
     def tearDown(self):
         """Clean up after tests."""
         # Clean up environment variable
-        if 'TESTING' in os.environ:
-            del os.environ['TESTING']
+        if "TESTING" in os.environ:
+            del os.environ["TESTING"]
 
     def test_cast_on_row_from_left(self):
         """Test visualization of cast-on row starting from left."""
@@ -109,7 +110,13 @@ class Test_Knitting_Visualizers_Safe(TestCase):
         height = 6
         knit_graph = lace_mesh(width, height)
 
-        fig = visualize_knit_graph_safe(knit_graph, start_on_left=True, balance_by_base_width=True, left_zero_align=True, graph_title="Alternating Lace")
+        fig = visualize_knit_graph_safe(
+            knit_graph,
+            start_on_left=True,
+            balance_by_base_width=True,
+            left_zero_align=True,
+            graph_title="Alternating Lace",
+        )
 
         if self.show_visualization:
             fig.show()

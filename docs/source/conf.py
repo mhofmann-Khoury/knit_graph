@@ -1,11 +1,11 @@
 """
-    Configuration file for the Sphinx documentation builder.
-    =============================================================================
-    SPHINX DOCUMENTATION CONFIGURATION
-    =============================================================================
-    This file configures how Sphinx generates documentation from your Python code.
-    For the full list of built-in configuration values, see:
-    https://www.sphinx-doc.org/en/master/usage/configuration.html
+Configuration file for the Sphinx documentation builder.
+=============================================================================
+SPHINX DOCUMENTATION CONFIGURATION
+=============================================================================
+This file configures how Sphinx generates documentation from your Python code.
+For the full list of built-in configuration values, see:
+https://www.sphinx-doc.org/en/master/usage/configuration.html
 """
 
 import os
@@ -19,17 +19,17 @@ from importlib.metadata import PackageNotFoundError, version
 # Add the project root and source directory to Python path so Sphinx can import your modules
 
 # Path to your source code (adjust if not using src/ layout)
-sys.path.insert(0, os.path.abspath('..'))  # Project root
-sys.path.insert(0, os.path.abspath('../src'))  # Source directory
-sys.path.insert(0, os.path.abspath('.'))  # Docs directory
+sys.path.insert(0, os.path.abspath(".."))  # Project root
+sys.path.insert(0, os.path.abspath("../src"))  # Source directory
+sys.path.insert(0, os.path.abspath("."))  # Docs directory
 
 # =============================================================================
 # PROJECT INFORMATION
 # =============================================================================
 
-project = 'knit-graphs'
-copyright = f'{datetime.now().year}, Megan Hofmann'
-author = 'Megan Hofmann'
+project = "knit-graphs"
+copyright = f"{datetime.now().year}, Megan Hofmann"
+author = "Megan Hofmann"
 
 try:
     # Get version from installed package metadata
@@ -49,19 +49,18 @@ release = version
 # Extensions to enable (these add functionality to Sphinx)
 extensions = [
     # Core Sphinx extensions
-    'sphinx.ext.autodoc',  # Generate docs from docstrings
-    'sphinx.ext.autosummary',  # Generate summary tables automatically
-    'sphinx.ext.viewcode',  # Add [source] links to documentation
-    'sphinx.ext.napoleon',  # Support Google/NumPy docstring styles
-    'sphinx.ext.intersphinx',  # Link to other project docs (e.g., Python docs)
-    'sphinx.ext.githubpages',  # Publish to GitHub Pages (.nojekyll file)
-    'sphinx.ext.todo',  # Support TODO items in docs
-    'sphinx.ext.coverage',  # Check documentation coverage
-    'sphinx.ext.doctest',  # Test code snippets in documentation
-
+    "sphinx.ext.autodoc",  # Generate docs from docstrings
+    "sphinx.ext.autosummary",  # Generate summary tables automatically
+    "sphinx.ext.viewcode",  # Add [source] links to documentation
+    "sphinx.ext.napoleon",  # Support Google/NumPy docstring styles
+    "sphinx.ext.intersphinx",  # Link to other project docs (e.g., Python docs)
+    "sphinx.ext.githubpages",  # Publish to GitHub Pages (.nojekyll file)
+    "sphinx.ext.todo",  # Support TODO items in docs
+    "sphinx.ext.coverage",  # Check documentation coverage
+    "sphinx.ext.doctest",  # Test code snippets in documentation
     # Third-party extensions (these need to be installed)
-    'sphinx_autodoc_typehints',  # Better type hint rendering
-    'myst_parser',  # Support for Markdown files (optional)
+    "sphinx_autodoc_typehints",  # Better type hint rendering
+    "myst_parser",  # Support for Markdown files (optional)
 ]
 
 # =============================================================================
@@ -70,19 +69,19 @@ extensions = [
 
 # File extensions that Sphinx will process
 source_suffix = {
-    '.rst': None,  # RestructuredText (default)
-    '.md': 'myst_parser',  # Markdown (requires myst_parser extension)
+    ".rst": None,  # RestructuredText (default)
+    ".md": "myst_parser",  # Markdown (requires myst_parser extension)
 }
 
 # The master toctree document (main page)
-master_doc = 'index'
+master_doc = "index"
 
 # Files and directories to exclude from processing
 exclude_patterns = [
-    '_build',  # Build output directory
-    'Thumbs.db',  # Windows thumbnail cache
-    '.DS_Store',  # macOS metadata
-    '**.ipynb_checkpoints',  # Jupyter notebook checkpoints
+    "_build",  # Build output directory
+    "Thumbs.db",  # Windows thumbnail cache
+    ".DS_Store",  # macOS metadata
+    "**.ipynb_checkpoints",  # Jupyter notebook checkpoints
 ]
 
 # =============================================================================
@@ -90,31 +89,30 @@ exclude_patterns = [
 # =============================================================================
 
 # The theme to use for HTML pages
-html_theme = 'sphinx_rtd_theme'  # Read the Docs theme (clean, professional)
+html_theme = "sphinx_rtd_theme"  # Read the Docs theme (clean, professional)
 
 # Directories containing static files (CSS, JS, images)
-html_static_path = ['_static']
+html_static_path = ["_static"]
 
 
 # Theme-specific options
 html_theme_options = {
-    'logo_only': False,  # Show project name with logo
-    'display_version': True,  # Show version in sidebar
-    'prev_next_buttons_location': 'bottom',  # Navigation button placement
-    'style_external_links': True,  # Style external links differently
-    'vcs_pageview_mode': '',  # Version control integration
-    'style_nav_header_background': '#2980B9',  # Header background color
-
+    "logo_only": False,  # Show project name with logo
+    "display_version": True,  # Show version in sidebar
+    "prev_next_buttons_location": "bottom",  # Navigation button placement
+    "style_external_links": True,  # Style external links differently
+    "vcs_pageview_mode": "",  # Version control integration
+    "style_nav_header_background": "#2980B9",  # Header background color
     # Table of contents options
-    'collapse_navigation': True,  # Collapse subsections in nav
-    'sticky_navigation': True,  # Keep navigation visible on scroll
-    'navigation_depth': 4,  # Maximum navigation depth
-    'includehidden': True,  # Include hidden toctrees
-    'titles_only': False,  # Show subsection titles in nav
+    "collapse_navigation": True,  # Collapse subsections in nav
+    "sticky_navigation": True,  # Keep navigation visible on scroll
+    "navigation_depth": 4,  # Maximum navigation depth
+    "includehidden": True,  # Include hidden toctrees
+    "titles_only": False,  # Show subsection titles in nav
 }
 
 # Additional HTML options
-html_title = f'{project} Documentation'  # Browser window title
+html_title = f"{project} Documentation"  # Browser window title
 html_short_title = project  # Short title for navigation
 
 
@@ -136,20 +134,20 @@ html_short_title = project  # Short title for navigation
 
 # Default options for all autodoc directives
 autodoc_default_options = {
-    'members': True,  # Include all members
-    'member-order': 'bysource',  # Order members as they appear in source
-    'special-members': '__init__',  # Include __init__ methods
-    'undoc-members': True,  # Include members without docstrings
-    'exclude-members': '__weakref__',  # Exclude certain members
-    'show-inheritance': True,  # Show class inheritance
-    'inherited-members': True,  # Include inherited methods
+    "members": True,  # Include all members
+    "member-order": "bysource",  # Order members as they appear in source
+    "special-members": "__init__",  # Include __init__ methods
+    "undoc-members": True,  # Include members without docstrings
+    "exclude-members": "__weakref__",  # Exclude certain members
+    "show-inheritance": True,  # Show class inheritance
+    "inherited-members": True,  # Include inherited methods
 }
 
 # How to display class signatures
 autodoc_class_signature = "mixed"  # Show __init__ parameters with class
 
 # Order of members in documentation
-autodoc_member_order = 'bysource'  # bysource, alphabetical, or groupwise
+autodoc_member_order = "bysource"  # bysource, alphabetical, or groupwise
 
 # Mock imports for modules that might not be available during doc building
 # Add any modules that cause import errors during doc building
@@ -193,13 +191,13 @@ napoleon_attr_annotations = True  # Include attribute annotations
 # Links to external documentation
 
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3', None),
-    'numpy': ('https://numpy.org/doc/stable/', None),
-    'pandas': ('https://pandas.pydata.org/pandas-docs/stable/', None),
-    'matplotlib': ('https://matplotlib.org/stable/', None),
-    'scipy': ('https://docs.scipy.org/doc/scipy/', None),
-    'sklearn': ('https://scikit-learn.org/stable/', None),
-    'typing': ('https://typing.readthedocs.io/en/latest/', None),
+    "python": ("https://docs.python.org/3", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
+    "sklearn": ("https://scikit-learn.org/stable/", None),
+    "typing": ("https://typing.readthedocs.io/en/latest/", None),
 }
 
 # =============================================================================
@@ -245,15 +243,16 @@ add_module_names = False  # Don't prepend module names to functions
 show_authors = False  # Don't show author info by default
 
 # Syntax highlighting style
-pygments_style = 'sphinx'  # Code highlighting theme
+pygments_style = "sphinx"  # Code highlighting theme
 
 # Language for content that doesn't specify a language
-language = 'en'
+language = "en"
 
 
 # =============================================================================
 # CUSTOM FUNCTIONS AND SETUP
 # =============================================================================
+
 
 def autodoc_skip_member(app, what, name, obj, skip, options):
     """
@@ -288,14 +287,15 @@ def setup(app):
         app: The Sphinx application instance
     """
     # Connect custom functions to Sphinx events
-    app.connect('autodoc-skip-member', autodoc_skip_member)
+    app.connect("autodoc-skip-member", autodoc_skip_member)
 
     # Return extension metadata
     return {
-        'version': version,
-        'parallel_read_safe': True,
-        'parallel_write_safe': True,
+        "version": version,
+        "parallel_read_safe": True,
+        "parallel_write_safe": True,
     }
+
 
 # =============================================================================
 # CHECKLIST FOR SPHINX SETUP

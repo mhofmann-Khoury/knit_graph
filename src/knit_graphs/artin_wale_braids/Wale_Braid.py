@@ -3,6 +3,7 @@
 This module provides the Wale_Braid class which represents complex cable knitting patterns as mathematical braid structures,
 using concepts from algebraic topology to model how wales cross over and under each other.
 """
+
 from knit_graphs.artin_wale_braids.Wale_Braid_Word import Wale_Braid_Word
 from knit_graphs.artin_wale_braids.Wale_Group import Wale_Group
 

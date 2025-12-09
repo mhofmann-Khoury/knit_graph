@@ -3,6 +3,7 @@
 This module provides utility functions for creating common knitting patterns and structures as knit graphs.
 These functions serve as building blocks for testing and demonstration purposes.
 """
+
 from knit_graphs.artin_wale_braids.Crossing_Direction import Crossing_Direction
 from knit_graphs.Knit_Graph import Knit_Graph
 from knit_graphs.Loop import Loop
@@ -69,15 +70,19 @@ def jersey_tube(tube_width: int, height: int) -> Knit_Graph:
         """Internal helper function to set up float connections between front and back of tube."""
         front_loops = last_course[0:tube_width]
         back_loops = last_course[tube_width:]
-        for first_front, second_front, back in zip(front_loops[0:-1], front_loops[1:], reversed(back_loops)):
+        for first_front, second_front, back in zip(
+            front_loops[0:-1], front_loops[1:], reversed(back_loops), strict=False
+        ):
             yarn.add_loop_behind_float(back, first_front, second_front)
-        for (first_back, second_back, front) in zip(back_loops[0:-1], back_loops[1:], reversed(front_loops)):
+        for first_back, second_back, front in zip(
+            back_loops[0:-1], back_loops[1:], reversed(front_loops), strict=False
+        ):
             yarn.add_loop_in_front_of_float(front, first_back, second_back)
 
     _set_tube_floats()
     for _ in range(0, height):
         next_course = [yarn.make_loop_on_end() for _p in last_course]
-        for parent_loop, child_loop in zip(last_course, next_course):
+        for parent_loop, child_loop in zip(last_course, next_course, strict=False):
             knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.BtF)
         last_course = next_course
         _set_tube_floats()
@@ -181,19 +186,44 @@ def lace_mesh(width: int, height: int) -> Knit_Graph:
         for i, parent_loop in enumerate(reversed(last_course)):
             child_loop = yarn.make_loop_on_end()
             if i % 3 == 0:  # Just knit every third stitch
-                knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.BtF, stack_position=0)
+                knit_graph.connect_loops(
+                    parent_loop,
+                    child_loop,
+                    pull_direction=Pull_Direction.BtF,
+                    stack_position=0,
+                )
             elif i % 6 == 1:  # Second of every 6 stitches (0 indexed) is yarn over before a decrease.
                 yo_parent = parent_loop
             elif i % 6 == 2:  # Third of every 6 stitches is bottom of decrease with prior yarn-over's parent
-                knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.BtF, stack_position=0)
+                knit_graph.connect_loops(
+                    parent_loop,
+                    child_loop,
+                    pull_direction=Pull_Direction.BtF,
+                    stack_position=0,
+                )
                 assert isinstance(yo_parent, Loop)
-                knit_graph.connect_loops(yo_parent, child_loop, pull_direction=Pull_Direction.BtF, stack_position=1)
+                knit_graph.connect_loops(
+                    yo_parent,
+                    child_loop,
+                    pull_direction=Pull_Direction.BtF,
+                    stack_position=1,
+                )
             elif i % 6 == 4:  # Fifth of every six stitches is bottom of decrease with next yarn-over's parent
-                knit_graph.connect_loops(parent_loop, child_loop, pull_direction=Pull_Direction.BtF, stack_position=0)
+                knit_graph.connect_loops(
+                    parent_loop,
+                    child_loop,
+                    pull_direction=Pull_Direction.BtF,
+                    stack_position=0,
+                )
                 prior_child = child_loop
             elif i % 6 == 5:  # The last of six stitches is the top of the prior decrease and new yarn-over
                 assert isinstance(prior_child, Loop)
-                knit_graph.connect_loops(parent_loop, prior_child, pull_direction=Pull_Direction.BtF, stack_position=1)
+                knit_graph.connect_loops(
+                    parent_loop,
+                    prior_child,
+                    pull_direction=Pull_Direction.BtF,
+                    stack_position=1,
+                )
             next_course.append(child_loop)
         last_course = next_course
         # Make a basic jersey course
@@ -226,7 +256,12 @@ def twist_cable(width: int, height: int) -> Knit_Graph:
     knit_graph, yarn = co_loops(width)
     last_course = knit_graph.get_courses()[0]
     next_course = []
-    pull_directions = [Pull_Direction.FtB, Pull_Direction.BtF, Pull_Direction.BtF, Pull_Direction.FtB]
+    pull_directions = [
+        Pull_Direction.FtB,
+        Pull_Direction.BtF,
+        Pull_Direction.BtF,
+        Pull_Direction.FtB,
+    ]
     for i, parent_loop in enumerate(reversed(last_course)):
         child_loop = yarn.make_loop_on_end()
         knit_graph.connect_loops(parent_loop, child_loop, pull_direction=pull_directions[i % 4])
@@ -244,7 +279,7 @@ def twist_cable(width: int, height: int) -> Knit_Graph:
                 child_loop = next_course[i - 1]
             knit_graph.connect_loops(parent_loop, child_loop, pull_direction=pull_directions[i % 4])
         if r % 2 == 1:  # cable row
-            for left_loop, right_loop in zip(next_course[1::4], next_course[2::4]):
+            for left_loop, right_loop in zip(next_course[1::4], next_course[2::4], strict=False):
                 knit_graph.add_crossing(left_loop, right_loop, crossing)
             crossing = ~crossing
         last_course = next_course

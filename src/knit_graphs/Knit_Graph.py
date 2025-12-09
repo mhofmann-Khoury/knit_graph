@@ -3,9 +3,11 @@
 This module contains the main Knit_Graph class which serves as the central data structure for representing knitted fabrics.
 It manages the relationships between loops, yarns, and structural elements like courses and wales.
 """
+
 from __future__ import annotations
 
-from typing import Any, Iterator, cast
+from collections.abc import Iterator
+from typing import Any, cast
 
 from networkx import DiGraph
 
@@ -118,9 +120,13 @@ class Knit_Graph:
         """
         self.yarns.add(yarn)
 
-    def connect_loops(self, parent_loop: Loop, child_loop: Loop,
-                      pull_direction: Pull_Direction = Pull_Direction.BtF,
-                      stack_position: int | None = None) -> None:
+    def connect_loops(
+        self,
+        parent_loop: Loop,
+        child_loop: Loop,
+        pull_direction: Pull_Direction = Pull_Direction.BtF,
+        stack_position: int | None = None,
+    ) -> None:
         """Create a stitch edge by connecting a parent and child loop.
 
         Args:
@@ -151,7 +157,7 @@ class Knit_Graph:
         if len(last_loop.parent_loops) == 0:
             return {Wale(last_loop, self)}
         ancestors = last_loop.ancestor_loops()
-        return {Wale(l, self) for l in ancestors}
+        return {Wale(ancestor_loop, self) for ancestor_loop in ancestors}
 
     def get_terminal_wales(self) -> dict[Loop, list[Wale]]:
         """
@@ -162,7 +168,7 @@ class Knit_Graph:
         """
         wale_groups = {}
         for loop in self.terminal_loops():
-            wale_groups[loop] = [wale for wale in self.get_wales_ending_with_loop(loop)]
+            wale_groups[loop] = list(self.get_wales_ending_with_loop(loop))
         return wale_groups
 
     def get_courses(self) -> list[Course]:
@@ -190,7 +196,7 @@ class Knit_Graph:
         Returns:
             set[Wale_Group]: The set of wale-groups that lead to the terminal loops of this graph. Each wale group represents a collection of wales that end at the same terminal loop.
         """
-        return set(Wale_Group(l, self) for l in self.terminal_loops())
+        return {Wale_Group(terminal_loop, self) for terminal_loop in self.terminal_loops()}
 
     def __contains__(self, item: Loop | tuple[Loop, Loop]) -> bool:
         """Check if a loop is contained in the knit graph.
@@ -214,7 +220,7 @@ class Knit_Graph:
         return cast(Iterator[Loop], iter(self.stitch_graph.nodes))
 
     def __getitem__(self, item: int) -> Loop:
-        loop = next((l for l in self if l.loop_id == item), None)
+        loop = next((loop for loop in self if loop.loop_id == item), None)
         if loop is None:
             raise KeyError(f"Loop of id {item} not in knit graph")
         return loop
@@ -224,7 +230,7 @@ class Knit_Graph:
         Returns:
             list[Loop]: The list of loops in the stitch graph sorted from the earliest formed loop to the latest formed loop.
         """
-        return sorted(list(self.stitch_graph.nodes))
+        return sorted(self.stitch_graph.nodes)
 
     def get_pull_direction(self, parent: Loop, child: Loop) -> Pull_Direction | None:
         """Get the pull direction of the stitch edge between parent and child loops.
@@ -240,7 +246,7 @@ class Knit_Graph:
         if edge is None:
             return None
         else:
-            return cast(Pull_Direction, edge['pull_direction'])
+            return cast(Pull_Direction, edge["pull_direction"])
 
     def get_stitch_edge(self, parent: Loop, child: Loop) -> dict[str, Any] | None:
         """Get the stitch edge data between two loops.
@@ -298,4 +304,4 @@ class Knit_Graph:
         Returns:
             Iterator[Loop]: An iterator over all terminal loops in the knit graph.
         """
-        return iter(l for l in self if self.is_terminal_loop(l))
+        return iter(loop for loop in self if self.is_terminal_loop(loop))

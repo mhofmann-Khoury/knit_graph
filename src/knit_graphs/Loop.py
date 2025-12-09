@@ -3,6 +3,7 @@
 This module defines the Loop class which represents individual loops in a knitting pattern.
 Loops are the fundamental building blocks of knitted structures and maintain relationships with parent loops, yarn connections, and float positions.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -225,7 +226,7 @@ class Loop:
         """
         return self.loop_id
 
-    def __eq__(self, other: Loop) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Check equality with another base loop based on loop_id and type.
 
         Args:
@@ -234,7 +235,7 @@ class Loop:
         Returns:
             bool: True if both loops have the same class and loop_id, False otherwise.
         """
-        return isinstance(other, other.__class__) and self.loop_id == other.loop_id
+        return isinstance(other, Loop) and isinstance(other, other.__class__) and self.loop_id == other.loop_id
 
     def __lt__(self, other: Loop | int) -> bool:
         """Compare loop_id with another loop or integer for ordering.

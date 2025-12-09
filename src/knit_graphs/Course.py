@@ -2,9 +2,11 @@
 
 This module contains the Course class which represents a horizontal row of loops in a knitting pattern.
 """
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterator, cast
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, cast
 
 from knit_graphs.Loop import Loop
 

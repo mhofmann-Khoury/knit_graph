@@ -3,10 +3,12 @@
 This module contains the Yarn class and Yarn_Properties dataclass which together represent the physical yarn used in knitting patterns.
 The Yarn class manages the sequence of loops along a yarn and their floating relationships.
 """
+
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterator, cast
+from typing import TYPE_CHECKING, cast
 
 from networkx import DiGraph, dfs_edges, dfs_preorder_nodes
 
@@ -22,6 +24,7 @@ class Yarn_Properties:
 
     This frozen dataclass contains all the physical and visual properties that characterize a yarn, including its structure, weight, and appearance.
     """
+
     name: str = "yarn"  # name (str): The name or identifier for this yarn type.
     plies: int = 2  # plies (int): The number of individual strands twisted together to form the yarn.
     weight: float = 28  # weight (float): The weight category or thickness of the yarn.
@@ -52,7 +55,7 @@ class Yarn_Properties:
         """
         return Yarn_Properties()
 
-    def __eq__(self, other: Yarn_Properties) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Check equality with another Yarn_Properties instance.
 
         Args:
@@ -61,7 +64,13 @@ class Yarn_Properties:
         Returns:
             bool: True if all properties (name, plies, weight, color) are equal, False otherwise.
         """
-        return self.name == other.name and self.plies == other.plies and self.weight == other.weight and self.color == other.color
+        return (
+            isinstance(other, Yarn_Properties)
+            and self.name == other.name
+            and self.plies == other.plies
+            and self.weight == other.weight
+            and self.color == other.color
+        )
 
     def __hash__(self) -> int:
         """Get hash value for use in sets and dictionaries.
@@ -82,10 +91,15 @@ class Yarn:
         loop_graph (DiGraph): The directed graph loops connected by yarn-wise float edges.
         properties (Yarn_Properties): The physical and visual properties of this yarn.
     """
+
     FRONT_LOOPS: str = "Front_Loops"
     _BACK_LOOPS: str = "Back_Loops"
 
-    def __init__(self, yarn_properties: None | Yarn_Properties = None, knit_graph: None | Knit_Graph = None):
+    def __init__(
+        self,
+        yarn_properties: None | Yarn_Properties = None,
+        knit_graph: None | Knit_Graph = None,
+    ):
         """Initialize a yarn with the specified properties and optional knit graph association.
 
         Args:
@@ -304,7 +318,7 @@ class Yarn:
             KeyError: The given loop does not exist in the yarn.
         """
         if loop not in self:
-            raise KeyError(f'Loop {loop} does not exist on yarn {self}.')
+            raise KeyError(f"Loop {loop} does not exist on yarn {self}.")
         prior_loop = self.prior_loop(loop)
         next_loop = self.next_loop(loop)
         if isinstance(prior_loop, Loop) and isinstance(next_loop, Loop):  # Loop is between two floats to be merged.
@@ -313,7 +327,12 @@ class Yarn:
             back_of_float_loops = self.get_loops_behind_float(prior_loop, loop)
             back_of_float_loops.update(self.get_loops_behind_float(loop, next_loop))
             self.loop_graph.remove_node(loop)
-            self.loop_graph.add_edge(prior_loop, next_loop, Front_Loops=front_of_float_loops, Back_Loops=back_of_float_loops)
+            self.loop_graph.add_edge(
+                prior_loop,
+                next_loop,
+                Front_Loops=front_of_float_loops,
+                Back_Loops=back_of_float_loops,
+            )
             for front_loop in front_of_float_loops:
                 front_loop.add_loop_in_front_of_float(prior_loop, next_loop)
             for back_loop in back_of_float_loops:
@@ -433,8 +452,11 @@ class Yarn:
             list[tuple[Loop, Loop, set[Loop]]]: List of tuples containing the two loops defining each float and the set of loops positioned in front of that float.
             Only includes floats that have loops in front of them.
         """
-        return [(u, v, self.get_loops_in_front_of_float(u, v)) for u, v in self.edge_iter()
-                if len(self.get_loops_in_front_of_float(u, v)) > 0]
+        return [
+            (u, v, self.get_loops_in_front_of_float(u, v))
+            for u, v in self.edge_iter()
+            if len(self.get_loops_in_front_of_float(u, v)) > 0
+        ]
 
     def loops_behind_floats(self) -> list[tuple[Loop, Loop, set[Loop]]]:
         """Get all float segments with loops positioned behind them.
@@ -443,8 +465,11 @@ class Yarn:
             list[tuple[Loop, Loop, set[Loop]]]: List of tuples containing the two loops defining each float and the set of loops positioned behind that float.
             Only includes floats that have loops behind them.
         """
-        return [(u, v, self.get_loops_behind_float(u, v)) for u, v in self.edge_iter()
-                if len(self.get_loops_behind_float(u, v)) > 0]
+        return [
+            (u, v, self.get_loops_behind_float(u, v))
+            for u, v in self.edge_iter()
+            if len(self.get_loops_behind_float(u, v)) > 0
+        ]
 
     def __getitem__(self, item: int) -> Loop:
         """Get a loop by its ID from this yarn.

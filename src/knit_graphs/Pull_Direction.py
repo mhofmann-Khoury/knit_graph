@@ -2,6 +2,7 @@
 
 This module defines the Pull_Direction enumeration which represents the two ways a loop can be pulled through other loops in knitting: from back to front (knit) or from front to back (purl).
 """
+
 from __future__ import annotations
 
 from enum import Enum
@@ -13,6 +14,7 @@ class Pull_Direction(Enum):
     This enumeration represents the two directions that yarn can be pulled through loops to create different stitch types.
     BtF (Back to Front) creates knit stitches, while FtB (Front to Back) creates purl stitches.
     """
+
     BtF = "Knit"
     FtB = "Purl"
 
