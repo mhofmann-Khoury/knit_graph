@@ -11,8 +11,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Full history for potential PR creation
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -36,61 +34,54 @@ jobs:
         run: poetry install --with dev
 
       - name: Install poetry-relax
-        run: |
-          poetry self add poetry-relax
-          poetry relax --help  # Verify installation
+        run: poetry self add poetry-relax
 
-      - name: Check current dependency constraints
-        run: |
-          echo "Current runtime dependencies:"
-          poetry show --only main --tree
-
-      - name: Run poetry-relax (dry-run)
-        id: check_relax
-        run: |
-          echo "Checking what can be relaxed..."
-          poetry relax --check --only main || echo "Dependencies can be relaxed"
-
-      - name: Relax runtime dependencies only
-        run: |
-          echo "Relaxing runtime dependencies..."
-          poetry relax --only main
-
-      - name: Update lock file with relaxed dependencies
-        run: poetry lock --no-update
-
-      - name: Install with minimum versions
-        run: |
-          # Clear the virtual environment to force reinstall with minimum versions
-          rm -rf .venv
-          poetry env use python3.11
-          poetry install --only main --sync
-
-      - name: Run tests with minimum dependency versions
-        run: |
-          poetry install --with dev
-          poetry run pytest tests/ -v
-
-      - name: Show proposed changes
+      - name: Show current dependency constraints
         run: |
           echo "================================"
-          echo "PROPOSED DEPENDENCY CHANGES"
+          echo "CURRENT RUNTIME DEPENDENCIES"
           echo "================================"
-          git diff pyproject.toml
+          poetry show --only main
+
+      - name: Check what can be relaxed (dry-run only)
+        run: |
           echo ""
           echo "================================"
-          echo "SUMMARY"
+          echo "CHECKING RELAXATION POTENTIAL"
           echo "================================"
-          if git diff --quiet pyproject.toml; then
-            echo "✅ No changes needed - dependencies are already optimally relaxed"
-          else
-            echo "📝 Changes proposed above. Review and apply manually if desired."
-            echo ""
-            echo "To apply these changes:"
-            echo "  1. Copy the diff above"
-            echo "  2. Apply to your local pyproject.toml"
-            echo "  3. Run: poetry lock --no-update"
-            echo "  4. Run: poetry install"
-            echo "  5. Run: poetry run pytest tests/ -v"
-            echo "  6. Commit if tests pass"
-          fi
+          poetry relax --check --only main
+
+      - name: Show what would change
+        run: |
+          echo ""
+          echo "================================"
+          echo "GENERATING PROPOSED CHANGES"
+          echo "================================"
+          # Make a backup of original file
+          cp pyproject.toml pyproject.toml.backup
+
+          # Run relax to generate changes
+          poetry relax --only main
+
+          # Show the diff
+          echo "PROPOSED CHANGES TO pyproject.toml:"
+          echo "-----------------------------------"
+          git diff pyproject.toml || echo "No changes proposed"
+
+          # Restore original file (no commits!)
+          mv pyproject.toml.backup pyproject.toml
+
+          echo ""
+          echo "================================"
+          echo "IMPORTANT: NO CHANGES COMMITTED"
+          echo "================================"
+          echo "✅ Your repository remains unchanged"
+          echo "📝 Review the diff above to see proposed relaxations"
+          echo ""
+          echo "To apply these changes manually:"
+          echo "  1. Run locally: poetry self add poetry-relax"
+          echo "  2. Run: poetry relax --only main"
+          echo "  3. Run: poetry lock"
+          echo "  4. Run: poetry install"
+          echo "  5. Run: poetry run pytest tests/ -v"
+          echo "  6. Commit if tests pass"
