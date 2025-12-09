@@ -47,12 +47,12 @@ jobs:
         id: check_relax
         run: |
           echo "Checking what can be relaxed..."
-          poetry run poetry-relax --check --only main || echo "Dependencies can be relaxed"
+          poetry run python -m poetry_relax --check --only main || echo "Dependencies can be relaxed"
 
       - name: Relax runtime dependencies only
         run: |
           echo "Relaxing runtime dependencies..."
-          poetry run poetry-relax --only main
+          poetry run python -m poetry_relax --only main
 
       - name: Update lock file with relaxed dependencies
         run: poetry lock --no-update
