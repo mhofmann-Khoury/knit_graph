@@ -12,7 +12,7 @@ build-backend = "poetry.core.masonry.api"  # Use Poetry's build system
 # All the information about your project that will appear on PyPI
 [tool.poetry]
 name = "knit-graphs"
-version = "0.0.10"
+version = "0.0.11"
 description = "A graph representation of knitted structures where each loop is a node and edges represent yarn and stitch relationships."
 authors = ["Megan Hofmann <m.hofmann@northeastern.edu>"]
 maintainers = ["Megan Hofmann <m.hofmann@northeastern.edu>"]
@@ -84,7 +84,7 @@ exclude = [
 [tool.poetry.dependencies]
 python = ">=3.11,<3.14"
 networkx = ">=3.5"
-plotly = "^6.3.0"
+plotly = ">=6.3.0"
 
 # =============================================================================
 # DEVELOPMENT DEPENDENCIES
