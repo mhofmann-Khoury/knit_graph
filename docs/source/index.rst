@@ -3,10 +3,6 @@ knit-graphs
 
 A graph representation of knitted structures where each loop is a node and edges represent yarn and stitch relationships.
 
-.. image:: https://img.shields.io/github/workflow/status/mhofmann-Khoury/knit-graphs/CI
-   :target: https://github.com/mhofmann-Khoury/knit-graphs/actions
-   :alt: Build Status
-
 .. image:: https://img.shields.io/pypi/v/knit-graphs
    :target: https://pypi.org/project/knit-graphs/
    :alt: PyPI Version
