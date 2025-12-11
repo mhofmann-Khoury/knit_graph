@@ -7,7 +7,7 @@ It manages the relationships between loops, yarns, and structural elements like 
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import Any, cast
+from typing import TypedDict, cast, overload
 
 from networkx import DiGraph
 
@@ -21,6 +21,12 @@ from knit_graphs.Pull_Direction import Pull_Direction
 from knit_graphs.Yarn import Yarn
 
 
+class Stitch_Edge(TypedDict):
+    """Type safe dict for accessing the edge data of stitch edges in Knit Graphs"""
+
+    pull_direction: Pull_Direction
+
+
 class Knit_Graph:
     """A representation of knitted structures as connections between loops on yarns.
 
@@ -32,6 +38,7 @@ class Knit_Graph:
     def __init__(self) -> None:
         """Initialize an empty knit graph with no loops or yarns."""
         self.stitch_graph: DiGraph = DiGraph()
+        self._loop_ids: dict[int, Loop] = {}
         self.braid_graph: Loop_Braid_Graph = Loop_Braid_Graph()
         self._last_loop: None | Loop = None
         self.yarns: set[Yarn] = set()
@@ -71,16 +78,17 @@ class Knit_Graph:
             loop (Loop): The loop to be added as a node in the graph. If the loop's yarn is not already in the graph, it will be added automatically.
         """
         self.stitch_graph.add_node(loop)
+        self._loop_ids[loop.loop_id] = loop
         if loop.yarn not in self.yarns:
             self.add_yarn(loop.yarn)
         if self._last_loop is None or loop > self._last_loop:
             self._last_loop = loop
 
-    def remove_loop(self, loop: Loop) -> None:
+    def remove_loop(self, loop: Loop | int) -> None:
         """
         Remove the given loop from the knit graph.
         Args:
-            loop (Loop): The loop to be removed.
+            loop (Loop | int): The loop or loop_id to be removed.
 
         Raises:
             KeyError: If the loop is not in the knit graph.
@@ -88,6 +96,8 @@ class Knit_Graph:
         """
         if loop not in self:
             raise KeyError(f"Loop {loop} not on the knit graph")
+        if isinstance(loop, int):
+            loop = self._loop_ids[loop]
         self.braid_graph.remove_loop(loop)  # remove any crossing associated with this loop.
         # Remove any stitch edges involving this loop.
         loop.remove_parent_loops()
@@ -96,6 +106,7 @@ class Knit_Graph:
             assert isinstance(child_loop, Loop)
             child_loop.remove_parent(loop)
         self.stitch_graph.remove_node(loop)
+        del self._loop_ids[loop.loop_id]
         # Remove loop from any floating positions
         loop.remove_loop_from_front_floats()
         loop.remove_loop_from_back_floats()
@@ -198,19 +209,21 @@ class Knit_Graph:
         """
         return {Wale_Group(terminal_loop, self) for terminal_loop in self.terminal_loops()}
 
-    def __contains__(self, item: Loop | tuple[Loop, Loop]) -> bool:
+    def __contains__(self, item: int | Loop | tuple[Loop | int, Loop | int]) -> bool:
         """Check if a loop is contained in the knit graph.
 
         Args:
-            item (Loop | tuple[Loop, Loop]): The loop being checked for in the graph or the parent-child stitch edge to check for in the knit graph.
+            item (int | Loop | tuple[Loop, Loop]): The loop being checked for in the graph or the parent-child stitch edge to check for in the knit graph.
 
         Returns:
             bool: True if the given loop or stitch edge is in the graph, False otherwise.
         """
-        if isinstance(item, Loop):
+        if isinstance(item, int):
+            return item in self._loop_ids
+        elif isinstance(item, Loop):
             return bool(self.stitch_graph.has_node(item))
         else:
-            return bool(self.stitch_graph.has_edge(item[0], item[1]))
+            return self.has_stitch_edge(item[0], item[1])
 
     def __iter__(self) -> Iterator[Loop]:
         """
@@ -219,11 +232,48 @@ class Knit_Graph:
         """
         return cast(Iterator[Loop], iter(self.stitch_graph.nodes))
 
-    def __getitem__(self, item: int) -> Loop:
-        loop = next((loop for loop in self if loop.loop_id == item), None)
-        if loop is None:
-            raise KeyError(f"Loop of id {item} not in knit graph")
-        return loop
+    @property
+    def stitch_iter(self) -> Iterator[tuple[Loop, Loop, Stitch_Edge]]:
+        """
+        Returns:
+            Iterator[tuple[Loop, Loop, Stitch_Edge]]:
+                An iterator over all the stitch edges in the knit graph.
+                Each element is a parent loop, child loop, and then the stitch edge data.
+
+        Notes:
+            There are no guarantees about the order of the stitch edges.
+        """
+        return iter(
+            (cast(Loop, u), cast(Loop, v), cast(Stitch_Edge, d)) for u, v, d in self.stitch_graph.edges(data=True)
+        )
+
+    @overload
+    def __getitem__(self, item: Loop | int) -> Loop: ...
+
+    @overload
+    def __getitem__(self, item: tuple[Loop | int, Loop | int]) -> Loop: ...
+
+    def __getitem__(self, item: int | Loop | tuple[Loop | int, Loop | int]) -> Loop | tuple[Loop, Loop, Stitch_Edge]:
+        """
+        Args:
+            item (int | Loop | tuple[Loop | int, Loop | int]):
+                A loop or loop_id used to access a specific loop in the knit graph.
+                If given a tuple, the result is the stitch-edge data for two loops or loop_ids.
+
+        Returns:
+
+        """
+        if item not in self:
+            if isinstance(item, tuple):
+                raise KeyError(f"Stitch between of {item[0]} and {item[1]} not in knit graph")
+            else:
+                raise KeyError(f"Loop {item} not in knit graph")
+        if isinstance(item, tuple) and self.has_stitch_edge(item[0], item[1]):
+            return self[item[0]], self[item[1]], cast(Stitch_Edge, self.get_stitch_edge(item[0], item[1]))
+        elif isinstance(item, int):
+            return self._loop_ids[item]
+        else:
+            return cast(Loop, self.stitch_graph.nodes[item])
 
     def sorted_loops(self) -> list[Loop]:
         """
@@ -246,20 +296,40 @@ class Knit_Graph:
         if edge is None:
             return None
         else:
-            return cast(Pull_Direction, edge["pull_direction"])
+            return edge["pull_direction"]
 
-    def get_stitch_edge(self, parent: Loop, child: Loop) -> dict[str, Any] | None:
+    def has_stitch_edge(self, parent: Loop | int, child: Loop | int) -> bool:
+        """
+        Args:
+            parent (Loop | int): The loop or loop_id of the parent of the stitch being searched for.
+            child (Loop | int): The loop or loop_id of the child of the stitch being searched for.
+
+        Returns:
+            bool: True if there is a stitch from the parent to the child loop, False otherwise.
+
+        """
+        if isinstance(parent, int):
+            parent = self[parent]
+        if isinstance(child, int):
+            child = self[child]
+        return bool(self.stitch_graph.has_edge(parent, child))
+
+    def get_stitch_edge(self, parent: Loop | int, child: Loop | int) -> Stitch_Edge | None:
         """Get the stitch edge data between two loops.
 
         Args:
-            parent (Loop): The parent loop of the stitch edge.
-            child (Loop): The child loop of the stitch edge.
+            parent (Loop | int): The parent loop of the stitch edge.
+            child (Loop | int): The child loop of the stitch edge.
 
         Returns:
-            dict[str, Any] | None: The edge data dictionary for this stitch edge, or None if no edge exists between these loops.
+            Stitch_Edge | None: The edge data dictionary for this stitch edge, or None if no edge exists between these loops.
         """
-        if self.stitch_graph.has_edge(parent, child):
-            return cast(dict[str, Any], self.stitch_graph.get_edge_data(parent, child))
+        if isinstance(parent, int):
+            parent = self[parent]
+        if isinstance(child, int):
+            child = self[child]
+        if self.has_stitch_edge(parent, child):
+            return cast(Stitch_Edge, self.stitch_graph.get_edge_data(parent, child))
         else:
             return None
 

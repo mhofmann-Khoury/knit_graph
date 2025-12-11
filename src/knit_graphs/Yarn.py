@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, cast, overload
 
 from networkx import DiGraph, dfs_edges, dfs_preorder_nodes
 
@@ -471,11 +471,19 @@ class Yarn:
             if len(self.get_loops_behind_float(u, v)) > 0
         ]
 
-    def __getitem__(self, item: int) -> Loop:
+    @overload
+    def __getitem__(self, item: Loop | int) -> Loop: ...
+
+    @overload
+    def __getitem__(self, item: slice) -> list[Loop]: ...
+
+    def __getitem__(self, item: int | Loop | slice) -> Loop | list[Loop]:
         """Get a loop by its ID from this yarn.
 
         Args:
-            item (int): The loop ID to retrieve from this yarn.
+            item (int | Loop | slice):
+                The loop or loop ID to retrieve from this yarn or the range of loops to retrieve by a slice.
+                If a slice is given, only the loops found by integers of the slice are returned (those that are in the yarn).
 
         Returns:
             Loop: The loop on the yarn with the matching ID.
@@ -483,7 +491,9 @@ class Yarn:
         Raises:
             KeyError: If the loop ID is not found on this yarn.
         """
-        if item not in self:
+        if isinstance(item, slice):
+            return [self[l] for l in range(item.start, item.stop, item.step) if l in self]
+        elif item not in self:
             raise KeyError(f"{item} is not a loop on yarn {self}")
         else:
-            return cast(Loop, self.loop_graph.nodes[item])
+            return cast(Loop, self.loop_graph.nodes[int(item)])

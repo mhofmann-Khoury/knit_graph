@@ -8,9 +8,25 @@ from knit_graphs.basic_knit_graph_generators import (
     seed_swatch,
     twist_cable,
 )
+from knit_graphs.Pull_Direction import Pull_Direction
 
 
 class TestKnit_Graph(TestCase):
+
+    def test_knit_graph_get_and_in(self):
+        knit_graph = jersey_swatch(4, 4)
+        for i in range(0, knit_graph.last_loop.loop_id):
+            self.assertTrue(i in knit_graph)
+            loop = knit_graph[i]
+            self.assertTrue(loop in knit_graph)
+
+        for loop in knit_graph:
+            self.assertTrue(loop in knit_graph)
+
+        for p, c, d in knit_graph.stitch_iter:
+            self.assertTrue((p, c) in knit_graph)
+            self.assertIs(d["pull_direction"], Pull_Direction.BtF)
+
     def test_mesh(self):
         generators = [lace_mesh]
         width = 13
@@ -30,7 +46,7 @@ class TestKnit_Graph(TestCase):
         height = 4
         knit_graph = jersey_tube(width, height)
         courses = knit_graph.get_courses()
-        assert len(courses) == height + 1, f"Expected tube courses to be {height+1} but got {len(courses)}"
+        assert len(courses) == height + 1, f"Expected tube courses to be {height + 1} but got {len(courses)}"
         for prior_course, next_course in zip(courses[:-1], courses[1:], strict=False):
             assert prior_course.in_round_with(next_course), f"{prior_course} not in round with {next_course}"
 
