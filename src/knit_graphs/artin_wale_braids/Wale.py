@@ -5,19 +5,19 @@ This module defines the Wale class which represents a vertical column of stitche
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, TypeVar, overload
 
-from networkx import DiGraph, dfs_preorder_nodes
-
+from knit_graphs.directed_loop_graph import Directed_Loop_Graph
 from knit_graphs.Loop import Loop
 from knit_graphs.Pull_Direction import Pull_Direction
 
 if TYPE_CHECKING:
     from knit_graphs.Knit_Graph import Knit_Graph
 
+LoopT = TypeVar("LoopT", bound=Loop)
 
-class Wale:
+
+class Wale(Directed_Loop_Graph[LoopT, Pull_Direction]):
     """A data structure representing stitch relationships between loops in a vertical column of a knitted structure.
 
     A wale represents a vertical sequence of loops connected by stitch edges, forming a column in the knitted fabric.
@@ -26,12 +26,9 @@ class Wale:
     Attributes:
         first_loop (Loop | None): The first (bottom) loop in the wale sequence.
         last_loop (Loop | None): The last (top) loop in the wale sequence.
-        stitches (DiGraph): Stores the directed graph of stitch connections within this wale.
     """
 
-    _PULL_DIRECTION: str = "pull_direction"
-
-    def __init__(self, first_loop: Loop, knit_graph: Knit_Graph, end_loop: Loop | None = None) -> None:
+    def __init__(self, first_loop: LoopT, knit_graph: Knit_Graph[LoopT], end_loop: LoopT | None = None) -> None:
         """Initialize a wale optionally starting with a specified loop.
 
         Args:
@@ -41,48 +38,36 @@ class Wale:
                 The loop to terminate the wale with.
                 If no loop is provided or this loop is not found, the wale will terminate at the first loop with no child.
         """
-        self.stitches: DiGraph = DiGraph()
-        self.stitches.add_node(first_loop)
-        self._knit_graph: Knit_Graph = knit_graph
-        self.first_loop: Loop = first_loop
-        self.last_loop: Loop = first_loop
+        super().__init__()
+        self.add_loop(first_loop)
+        self._knit_graph: Knit_Graph[LoopT] = knit_graph
+        self.first_loop: LoopT = first_loop
+        self.last_loop: LoopT = first_loop
         self._build_wale_from_first_loop(end_loop)
 
-    def _build_wale_from_first_loop(self, end_loop: Loop | None) -> None:
-        while self._knit_graph.has_child_loop(self.last_loop):
-            child = self._knit_graph.get_child_loop(self.last_loop)
-            assert isinstance(child, Loop)
-            self.add_loop_to_end(child)
-            if end_loop is not None and child is end_loop:
-                return  # found the end loop, so wrap up the wale
-
-    def add_loop_to_end(self, loop: Loop) -> None:
+    def overlaps(self, other: Wale) -> bool:
         """
-        Add a loop to the end (top) of the wale with the specified pull direction.
-
         Args:
-            loop (Loop): The loop to add to the end of the wale.
-        """
-        self.stitches.add_edge(
-            self.last_loop,
-            loop,
-            pull_direction=self._knit_graph.get_pull_direction(self.last_loop, loop),
-        )
-        self.last_loop = loop
+            other (Wale): The other wale to compare against for overlapping loops.
 
-    def get_stitch_pull_direction(self, u: Loop, v: Loop) -> Pull_Direction:
+        Returns:
+            bool: True if the other wale has any overlapping loop(s) with this wale, False otherwise.
+        """
+        return any(loop in other for loop in self)
+
+    def get_pull_direction(self, u: LoopT, v: LoopT) -> Pull_Direction:
         """Get the pull direction of the stitch edge between two loops in this wale.
 
         Args:
-            u (Loop): The parent loop in the stitch connection.
-            v (Loop): The child loop in the stitch connection.
+            u (LoopT): The parent loop in the stitch connection.
+            v (LoopT): The child loop in the stitch connection.
 
         Returns:
             Pull_Direction: The pull direction of the stitch between loops u and v.
         """
-        return cast(Pull_Direction, self.stitches.edges[u, v][self._PULL_DIRECTION])
+        return self.get_edge(u, v)
 
-    def split_wale(self, split_loop: Loop) -> tuple[Wale, Wale | None]:
+    def split_wale(self, split_loop: LoopT) -> tuple[Wale[LoopT], Wale[LoopT] | None]:
         """
         Split this wale at the specified loop into two separate wales.
 
@@ -92,18 +77,34 @@ class Wale:
             split_loop (Loop): The loop at which to split the wale. This loop will appear in both resulting wales.
 
         Returns:
-            tuple[Wale, Wale | None]:
+            tuple[Wale[LoopT], Wale[LoopT] | None]:
                 A tuple containing:
                 * The first wale (from start to split_loop). This will be the whole wale if the split_loop is not found.
                 * The second wale (from split_loop to end). This will be None if the split_loop is not found.
         """
         if split_loop in self:
             return (
-                Wale(self.first_loop, self._knit_graph, end_loop=split_loop),
-                Wale(split_loop, self._knit_graph, end_loop=self.last_loop),
+                Wale[LoopT](self.first_loop, self._knit_graph, end_loop=split_loop),
+                Wale[LoopT](split_loop, self._knit_graph, end_loop=self.last_loop),
             )
         else:
             return self, None
+
+    def _build_wale_from_first_loop(self, end_loop: LoopT | None) -> None:
+        for child in [*self._knit_graph.dfs_preorder_loops(self.first_loop)][1:]:
+            self.add_loop_to_end(child)
+            if end_loop is not None and child is end_loop:
+                return  # found the end loop, so wrap up the wale
+
+    def add_loop_to_end(self, loop: LoopT) -> None:
+        """
+        Add a loop to the end (top) of the wale.
+        Args:
+            loop (T): The loop to add to the end of the wale.
+        """
+        self.add_loop(loop)
+        self.add_edge(self.last_loop, loop, self._knit_graph.get_edge(self.last_loop, loop))
+        self.last_loop = loop
 
     def __eq__(self, other: object) -> bool:
         """
@@ -117,46 +118,35 @@ class Wale:
             return False
         return not any(l != o for l, o in zip(self, other, strict=False))
 
-    def __len__(self) -> int:
-        """Get the number of loops in this wale.
+    @overload
+    def __getitem__(self, item: int) -> LoopT: ...
 
-        Returns:
-            int: The total number of loops in this wale.
-        """
-        return len(self.stitches.nodes)
+    @overload
+    def __getitem__(self, item: tuple[LoopT | int, LoopT | int]) -> Pull_Direction: ...
 
-    def __iter__(self) -> Iterator[Loop]:
-        """Iterate over loops in this wale from first to last.
+    @overload
+    def __getitem__(self, item: slice) -> list[LoopT]: ...
 
-        Returns:
-            Iterator[Loop]: An iterator over the loops in this wale in their sequential order from bottom to top.
-        """
-        return cast(Iterator[Loop], dfs_preorder_nodes(self.stitches, source=self.first_loop))
-
-    def __getitem__(self, item: int | slice) -> Loop | list[Loop]:
-        """Get loop(s) at the specified index or slice within this wale.
+    def __getitem__(self, item: int | tuple[LoopT | int, LoopT | int] | slice) -> LoopT | Pull_Direction | list[LoopT]:
+        """Get a loop by its ID from this yarn.
 
         Args:
-            item (int | slice): The index of a single loop or a slice for multiple loops.
+            item (int | tuple[LoopT | int, LoopT | int] | slice):
+                The loop ,loop ID, or float between two loops to retrieve from this yarn.
+                If given a slice, it will retrieve the elements between the specified indices in the standard ordering of loops along the wale.
 
         Returns:
-            Loop | list[Loop]: The loop at the specified index, or a list of loops for a slice.
+            LoopT: The loop on the yarn with the matching ID.
+            Stitch_Edge: The edge data for the given pair of loops forming a stitch in the wale.
+            list[LoopT]: The loops in the slice of the wale based on their ordering along the wale.
+
+        Raises:
+            KeyError: If the item is not found on this yarn.
         """
-        if isinstance(item, int):
-            return cast(Loop, self.stitches.nodes[item])
-        elif isinstance(item, slice):
+        if isinstance(item, slice):
             return list(self)[item]
-
-    def __contains__(self, item: Loop) -> bool:
-        """Check if a loop is contained in this wale.
-
-        Args:
-            item (Loop): The loop to check for membership in this wale.
-
-        Returns:
-            bool: True if the loop is in this wale, False otherwise.
-        """
-        return bool(self.stitches.has_node(item))
+        else:
+            return super().__getitem__(item)
 
     def __hash__(self) -> int:
         """
@@ -180,14 +170,3 @@ class Wale:
             str: The string representation of this wale.
         """
         return str(self)
-
-    def overlaps(self, other: Wale) -> bool:
-        """Check if this wale has any loops in common with another wale.
-
-        Args:
-            other (Wale): The other wale to compare against for overlapping loops.
-
-        Returns:
-            bool: True if the other wale has any overlapping loop(s) with this wale, False otherwise.
-        """
-        return any(loop in other for loop in self)

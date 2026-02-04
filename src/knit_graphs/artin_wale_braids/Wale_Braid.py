@@ -4,11 +4,16 @@ This module provides the Wale_Braid class which represents complex cable knittin
 using concepts from algebraic topology to model how wales cross over and under each other.
 """
 
+from typing import Generic, TypeVar
+
 from knit_graphs.artin_wale_braids.Wale_Braid_Word import Wale_Braid_Word
 from knit_graphs.artin_wale_braids.Wale_Group import Wale_Group
+from knit_graphs.Loop import Loop
+
+LoopT = TypeVar("LoopT", bound=Loop)
 
 
-class Wale_Braid:
+class Wale_Braid(Generic[LoopT]):
     """A model of knitted structure as a set of crossing wales using Artin braid groups.
 
     This class represents complex cable knitting patterns using mathematical braid theory,
@@ -20,7 +25,7 @@ class Wale_Braid:
         wale_words (list[Wale_Braid_Word]): The sequence of braid words that describe the crossing operations between wales.
     """
 
-    def __init__(self, wale_groups: list[Wale_Group], wale_words: list[Wale_Braid_Word]) -> None:
+    def __init__(self, wale_groups: list[Wale_Group], wale_words: list[Wale_Braid_Word[LoopT]]) -> None:
         """Initialize a wale braid with the specified groups and braid words.
 
         Args:

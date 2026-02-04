@@ -7,27 +7,22 @@ It manages the relationships between loops, yarns, and structural elements like 
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import TypedDict, cast, overload
-
-from networkx import DiGraph
+from typing import TypeVar
 
 from knit_graphs.artin_wale_braids.Crossing_Direction import Crossing_Direction
 from knit_graphs.artin_wale_braids.Loop_Braid_Graph import Loop_Braid_Graph
 from knit_graphs.artin_wale_braids.Wale import Wale
 from knit_graphs.artin_wale_braids.Wale_Group import Wale_Group
 from knit_graphs.Course import Course
+from knit_graphs.directed_loop_graph import Directed_Loop_Graph
 from knit_graphs.Loop import Loop
 from knit_graphs.Pull_Direction import Pull_Direction
 from knit_graphs.Yarn import Yarn
 
-
-class Stitch_Edge(TypedDict):
-    """Type safe dict for accessing the edge data of stitch edges in Knit Graphs"""
-
-    pull_direction: Pull_Direction
+LoopT = TypeVar("LoopT", bound=Loop)
 
 
-class Knit_Graph:
+class Knit_Graph(Directed_Loop_Graph[LoopT, Pull_Direction]):
     """A representation of knitted structures as connections between loops on yarns.
 
     The Knit_Graph class is the main data structure for representing knitted fabrics.
@@ -37,31 +32,44 @@ class Knit_Graph:
 
     def __init__(self) -> None:
         """Initialize an empty knit graph with no loops or yarns."""
-        self.stitch_graph: DiGraph = DiGraph()
-        self._loop_ids: dict[int, Loop] = {}
-        self.braid_graph: Loop_Braid_Graph = Loop_Braid_Graph()
-        self._last_loop: None | Loop = None
-        self.yarns: set[Yarn] = set()
+        super().__init__()
+        self.braid_graph: Loop_Braid_Graph[LoopT] = Loop_Braid_Graph()
+        self._last_loop: LoopT | None = None
+        self.yarns: set[Yarn[LoopT]] = set()
 
     @property
-    def last_loop(self) -> None | Loop:
+    def last_loop(self) -> LoopT | None:
         """Get the most recently added loop in the graph.
 
         Returns:
-            None | Loop: The last loop added to the graph, or None if no loops have been added.
+            Loop | None: The last loop added to the graph, or None if no loops have been added.
         """
         return self._last_loop
 
     @property
-    def has_loop(self) -> bool:
-        """Check if the graph contains any loops.
+    def stitch_iter(self) -> Iterator[tuple[LoopT, LoopT, Pull_Direction]]:
+        """
+        Returns:
+            Iterator[tuple[LoopT, LoopT, Pull_Direction]]: Iterator over the edges and edge-data in the graph.
+
+        Notes:
+            No guarantees about the order of the edges.
+        """
+        return self.edge_iter
+
+    def get_pull_direction(self, parent: LoopT | int, child: LoopT | int) -> Pull_Direction:
+        """Get the pull direction of the stitch edge between parent and child loops.
+
+        Args:
+            parent (Loop | int): The parent loop of the stitch edge.
+            child (Loop | int): The child loop of the stitch edge.
 
         Returns:
-            bool: True if the graph has at least one loop, False otherwise.
+            Pull_Direction: The pull direction of the stitch-edge between the parent and child.
         """
-        return self.last_loop is not None
+        return self.get_edge(parent, child)
 
-    def add_crossing(self, left_loop: Loop, right_loop: Loop, crossing_direction: Crossing_Direction) -> None:
+    def add_crossing(self, left_loop: LoopT, right_loop: LoopT, crossing_direction: Crossing_Direction) -> None:
         """Add a cable crossing between two loops with the specified crossing direction.
 
         Args:
@@ -71,20 +79,19 @@ class Knit_Graph:
         """
         self.braid_graph.add_crossing(left_loop, right_loop, crossing_direction)
 
-    def add_loop(self, loop: Loop) -> None:
+    def add_loop(self, loop: LoopT) -> None:
         """Add a loop to the knit graph as a node.
 
         Args:
             loop (Loop): The loop to be added as a node in the graph. If the loop's yarn is not already in the graph, it will be added automatically.
         """
-        self.stitch_graph.add_node(loop)
-        self._loop_ids[loop.loop_id] = loop
+        super().add_loop(loop)
         if loop.yarn not in self.yarns:
             self.add_yarn(loop.yarn)
         if self._last_loop is None or loop > self._last_loop:
             self._last_loop = loop
 
-    def remove_loop(self, loop: Loop | int) -> None:
+    def remove_loop(self, loop: LoopT | int) -> None:
         """
         Remove the given loop from the knit graph.
         Args:
@@ -94,22 +101,19 @@ class Knit_Graph:
             KeyError: If the loop is not in the knit graph.
 
         """
-        if loop not in self:
-            raise KeyError(f"Loop {loop} not on the knit graph")
         if isinstance(loop, int):
-            loop = self._loop_ids[loop]
-        self.braid_graph.remove_loop(loop)  # remove any crossing associated with this loop.
+            loop = self.get_loop(loop)
+        if loop in self.braid_graph:
+            self.braid_graph.remove_loop(loop)  # remove any crossing associated with this loop.
         # Remove any stitch edges involving this loop.
-        loop.remove_parent_loops()
         if self.has_child_loop(loop):
             child_loop = self.get_child_loop(loop)
-            assert isinstance(child_loop, Loop)
-            child_loop.remove_parent(loop)
-        self.stitch_graph.remove_node(loop)
-        del self._loop_ids[loop.loop_id]
+            if child_loop is not None:
+                child_loop.remove_parent(loop)
+        super().remove_loop(loop)
         # Remove loop from any floating positions
-        loop.remove_loop_from_front_floats()
-        loop.remove_loop_from_back_floats()
+        for yarn in self.yarns:
+            yarn.remove_loop_relative_to_floats(loop)
         # Remove loop from yarn
         yarn = loop.yarn
         yarn.remove_loop(loop)
@@ -118,23 +122,22 @@ class Knit_Graph:
         # Reset last loop
         if loop is self.last_loop:
             if len(self.yarns) == 0:  # No loops left
-                assert len(self.stitch_graph.nodes) == 0
                 self._last_loop = None
             else:  # Set to the newest loop formed at the end of any yarns.
-                self._last_loop = max(y.last_loop for y in self.yarns if isinstance(y.last_loop, Loop))
+                self._last_loop = max(y.last_loop for y in self.yarns if y.last_loop is not None)
 
-    def add_yarn(self, yarn: Yarn) -> None:
+    def add_yarn(self, yarn: Yarn[LoopT]) -> None:
         """Add a yarn to the graph without adding its loops.
 
         Args:
-            yarn (Yarn): The yarn to be added to the graph structure. This method assumes that loops do not need to be added separately.
+            yarn (Yarn[LoopT]): The yarn to be added to the graph structure. This method assumes that loops do not need to be added separately.
         """
         self.yarns.add(yarn)
 
     def connect_loops(
         self,
-        parent_loop: Loop,
-        child_loop: Loop,
+        parent_loop: LoopT,
+        child_loop: LoopT,
         pull_direction: Pull_Direction = Pull_Direction.BtF,
         stack_position: int | None = None,
     ) -> None:
@@ -149,28 +152,24 @@ class Knit_Graph:
         Raises:
             KeyError: If either the parent_loop or child_loop is not already in the knit graph.
         """
-        if parent_loop not in self:
-            raise KeyError(f"parent loop {parent_loop} not in Knit Graph")
-        if child_loop not in self:
-            raise KeyError(f"child loop {parent_loop} not in Knit Graph")
-        self.stitch_graph.add_edge(parent_loop, child_loop, pull_direction=pull_direction)
+        super().add_edge(parent_loop, child_loop, pull_direction)
         child_loop.add_parent_loop(parent_loop, stack_position)
 
-    def get_wales_ending_with_loop(self, last_loop: Loop) -> set[Wale]:
+    def get_wales_ending_with_loop(self, last_loop: LoopT) -> set[Wale[LoopT]]:
         """Get all wales (vertical columns of stitches) that end at the specified loop.
 
         Args:
             last_loop (Loop): The last loop of the joined set of wales.
 
         Returns:
-            set[Wale]: The set of wales that end at this loop.
+            set[Wale[LoopT]]: The set of wales that end at this loop.
         """
         if len(last_loop.parent_loops) == 0:
-            return {Wale(last_loop, self)}
-        ancestors = last_loop.ancestor_loops()
-        return {Wale(ancestor_loop, self) for ancestor_loop in ancestors}
+            return {Wale[LoopT](last_loop, self)}
+        sources = self.source_loops(last_loop)
+        return {Wale[LoopT](source, self) for source in sources}
 
-    def get_terminal_wales(self) -> dict[Loop, list[Wale]]:
+    def get_terminal_wales(self) -> dict[LoopT, list[Wale]]:
         """
         Get wale groups organized by their terminal loops.
 
@@ -178,24 +177,24 @@ class Knit_Graph:
             dict[Loop, list[Wale]]: Dictionary mapping terminal loops to list of wales that terminate that wale.
         """
         wale_groups = {}
-        for loop in self.terminal_loops():
+        for loop in self.terminal_loops:
             wale_groups[loop] = list(self.get_wales_ending_with_loop(loop))
         return wale_groups
 
-    def get_courses(self) -> list[Course]:
+    def get_courses(self) -> list[Course[LoopT]]:
         """Get all courses (horizontal rows) in the knit graph in chronological order.
 
         Returns:
-            list[Course]: A list of courses representing horizontal rows of loops.
+            list[Course[LoopT]: A list of courses representing horizontal rows of loops.
             The first course contains the initial set of loops. A course change occurs when a loop has a parent loop in the previous course.
         """
         courses = []
-        course = Course(self)
-        for loop in self.sorted_loops():
+        course = Course(0, self)
+        for loop in self.sorted_loops:
             for parent in loop.parent_loops:
                 if parent in course:  # start a new course
                     courses.append(course)
-                    course = Course(self)
+                    course = Course(course.course_number + 1, self)
                     break
             course.add_loop(loop)
         courses.append(course)
@@ -207,171 +206,4 @@ class Knit_Graph:
         Returns:
             set[Wale_Group]: The set of wale-groups that lead to the terminal loops of this graph. Each wale group represents a collection of wales that end at the same terminal loop.
         """
-        return {Wale_Group(terminal_loop, self) for terminal_loop in self.terminal_loops()}
-
-    def __contains__(self, item: int | Loop | tuple[Loop | int, Loop | int]) -> bool:
-        """Check if a loop is contained in the knit graph.
-
-        Args:
-            item (int | Loop | tuple[Loop, Loop]): The loop being checked for in the graph or the parent-child stitch edge to check for in the knit graph.
-
-        Returns:
-            bool: True if the given loop or stitch edge is in the graph, False otherwise.
-        """
-        if isinstance(item, int):
-            return item in self._loop_ids
-        elif isinstance(item, Loop):
-            return bool(self.stitch_graph.has_node(item))
-        else:
-            return self.has_stitch_edge(item[0], item[1])
-
-    def __iter__(self) -> Iterator[Loop]:
-        """
-        Returns:
-            Iterator[Loop]: An iterator over all loops in the knit graph.
-        """
-        return cast(Iterator[Loop], iter(self.stitch_graph.nodes))
-
-    @property
-    def stitch_iter(self) -> Iterator[tuple[Loop, Loop, Stitch_Edge]]:
-        """
-        Returns:
-            Iterator[tuple[Loop, Loop, Stitch_Edge]]:
-                An iterator over all the stitch edges in the knit graph.
-                Each element is a parent loop, child loop, and then the stitch edge data.
-
-        Notes:
-            There are no guarantees about the order of the stitch edges.
-        """
-        return iter(
-            (cast(Loop, u), cast(Loop, v), cast(Stitch_Edge, d)) for u, v, d in self.stitch_graph.edges(data=True)
-        )
-
-    @overload
-    def __getitem__(self, item: Loop | int) -> Loop: ...
-
-    @overload
-    def __getitem__(self, item: tuple[Loop | int, Loop | int]) -> Loop: ...
-
-    def __getitem__(self, item: int | Loop | tuple[Loop | int, Loop | int]) -> Loop | tuple[Loop, Loop, Stitch_Edge]:
-        """
-        Args:
-            item (int | Loop | tuple[Loop | int, Loop | int]):
-                A loop or loop_id used to access a specific loop in the knit graph.
-                If given a tuple, the result is the stitch-edge data for two loops or loop_ids.
-
-        Returns:
-
-        """
-        if item not in self:
-            if isinstance(item, tuple):
-                raise KeyError(f"Stitch between of {item[0]} and {item[1]} not in knit graph")
-            else:
-                raise KeyError(f"Loop {item} not in knit graph")
-        if isinstance(item, tuple) and self.has_stitch_edge(item[0], item[1]):
-            return self[item[0]], self[item[1]], cast(Stitch_Edge, self.get_stitch_edge(item[0], item[1]))
-        elif isinstance(item, int):
-            return self._loop_ids[item]
-        else:
-            return cast(Loop, self.stitch_graph.nodes[item])
-
-    def sorted_loops(self) -> list[Loop]:
-        """
-        Returns:
-            list[Loop]: The list of loops in the stitch graph sorted from the earliest formed loop to the latest formed loop.
-        """
-        return sorted(self.stitch_graph.nodes)
-
-    def get_pull_direction(self, parent: Loop, child: Loop) -> Pull_Direction | None:
-        """Get the pull direction of the stitch edge between parent and child loops.
-
-        Args:
-            parent (Loop): The parent loop of the stitch edge.
-            child (Loop): The child loop of the stitch edge.
-
-        Returns:
-            Pull_Direction | None: The pull direction of the stitch-edge between the parent and child, or None if there is no edge between these loops.
-        """
-        edge = self.get_stitch_edge(parent, child)
-        if edge is None:
-            return None
-        else:
-            return edge["pull_direction"]
-
-    def has_stitch_edge(self, parent: Loop | int, child: Loop | int) -> bool:
-        """
-        Args:
-            parent (Loop | int): The loop or loop_id of the parent of the stitch being searched for.
-            child (Loop | int): The loop or loop_id of the child of the stitch being searched for.
-
-        Returns:
-            bool: True if there is a stitch from the parent to the child loop, False otherwise.
-
-        """
-        if isinstance(parent, int):
-            parent = self[parent]
-        if isinstance(child, int):
-            child = self[child]
-        return bool(self.stitch_graph.has_edge(parent, child))
-
-    def get_stitch_edge(self, parent: Loop | int, child: Loop | int) -> Stitch_Edge | None:
-        """Get the stitch edge data between two loops.
-
-        Args:
-            parent (Loop | int): The parent loop of the stitch edge.
-            child (Loop | int): The child loop of the stitch edge.
-
-        Returns:
-            Stitch_Edge | None: The edge data dictionary for this stitch edge, or None if no edge exists between these loops.
-        """
-        if isinstance(parent, int):
-            parent = self[parent]
-        if isinstance(child, int):
-            child = self[child]
-        if self.has_stitch_edge(parent, child):
-            return cast(Stitch_Edge, self.stitch_graph.get_edge_data(parent, child))
-        else:
-            return None
-
-    def get_child_loop(self, loop: Loop) -> Loop | None:
-        """Get the child loop of the specified parent loop.
-
-        Args:
-            loop (Loop): The loop to look for a child loop from.
-
-        Returns:
-            Loop | None: The child loop if one exists, or None if no child loop is found.
-        """
-        successors = [*self.stitch_graph.successors(loop)]
-        if len(successors) == 0:
-            return None
-        return cast(Loop, successors[0])
-
-    def has_child_loop(self, loop: Loop) -> bool:
-        """Check if a loop has a child loop connected to it.
-
-        Args:
-            loop (Loop): The loop to check for child connections.
-
-        Returns:
-            bool: True if the loop has a child loop, False otherwise.
-        """
-        return self.get_child_loop(loop) is not None
-
-    def is_terminal_loop(self, loop: Loop) -> bool:
-        """Check if a loop is terminal (has no child loops and terminates a wale).
-
-        Args:
-            loop (Loop): The loop to check for terminal status.
-
-        Returns:
-            bool: True if the loop has no child loops and terminates a wale, False otherwise.
-        """
-        return not self.has_child_loop(loop)
-
-    def terminal_loops(self) -> Iterator[Loop]:
-        """
-        Returns:
-            Iterator[Loop]: An iterator over all terminal loops in the knit graph.
-        """
-        return iter(loop for loop in self if self.is_terminal_loop(loop))
+        return {Wale_Group(terminal_loop, self) for terminal_loop in self.terminal_loops}

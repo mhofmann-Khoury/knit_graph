@@ -8,7 +8,7 @@ class TestWale_Group(TestCase):
         knit_graph, yarn = co_loops(4)
         wale_groups = knit_graph.get_wale_groups()
         terminal_groups = {w.terminal_loop for w in wale_groups}
-        for loop in knit_graph.terminal_loops():
+        for loop in knit_graph.terminal_loops:
             self.assertIn(
                 loop,
                 terminal_groups,

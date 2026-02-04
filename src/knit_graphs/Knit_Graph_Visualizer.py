@@ -8,8 +8,7 @@ from __future__ import annotations
 
 import os
 import sys
-from collections.abc import Iterable
-from typing import TypedDict, cast
+from typing import Generic, TypedDict, TypeVar, cast
 
 import plotly.io as pio
 from networkx import DiGraph
@@ -21,13 +20,15 @@ from knit_graphs.Knit_Graph import Knit_Graph
 from knit_graphs.Loop import Loop
 from knit_graphs.Pull_Direction import Pull_Direction
 
+LoopT = TypeVar("LoopT", bound=Loop)
 
-class TraceData(TypedDict):
+
+class TraceData(TypedDict, Generic[LoopT]):
     """Typing specification for the dictionaries passes as traces to Plotly"""
 
     x: list[float | None]
     y: list[float | None]
-    edge: list[tuple[Loop, Loop]]
+    edge: list[tuple[LoopT, LoopT]]
     is_start: list[bool]
 
 
@@ -49,7 +50,7 @@ def configure_plotly_environment() -> None:
 configure_plotly_environment()
 
 
-class Knit_Graph_Visualizer:
+class Knit_Graph_Visualizer(Generic[LoopT]):
     """A class used to visualize a knit graph using the plotly graph objects library.
 
     This class converts knit graph data structures into interactive 2D visualizations by calculating loop positions,
@@ -71,7 +72,7 @@ class Knit_Graph_Visualizer:
 
     def __init__(
         self,
-        knit_graph: Knit_Graph,
+        knit_graph: Knit_Graph[LoopT],
         first_course_index: int = 0,
         top_course_index: int | None = None,
         start_on_left: bool = True,
@@ -92,18 +93,18 @@ class Knit_Graph_Visualizer:
         self.balance_by_base_width: bool = balance_by_base_width
         self.start_on_left: bool = start_on_left
         self.knit_graph: Knit_Graph = knit_graph
-        self.courses: list[Course] = knit_graph.get_courses()
+        self.courses: list[Course[LoopT]] = knit_graph.get_courses()
         if top_course_index is None:
             top_course_index = len(self.courses)
         self.top_course_index: int = top_course_index
         self.first_course_index: int = first_course_index
         self.base_width: float = float(len(self.courses[first_course_index]))  # Updates when creating base course.
         self.base_left: float = 0.0  # Updates when creating the base course.
-        self.loops_to_course: dict[Loop, Course] = {}
+        self.loops_to_course: dict[LoopT, Course] = {}
         for course in self.courses:
             self.loops_to_course.update({loop: course for loop in course})
         self.data_graph: DiGraph = DiGraph()
-        self._loops_need_placement: set[Loop] = set()
+        self._loops_need_placement: set[LoopT] = set()
         self._loop_markers: list[Scatter] = []
         self._yarn_traces: list[Scatter] = []
         self._top_knit_trace_data: TraceData = {
@@ -332,11 +333,7 @@ class Knit_Graph_Visualizer:
 
     def _add_cable_edges(self) -> None:
         """Add all stitch edges that are involved in cable crossings to the appropriate trace data."""
-        for (
-            left_loop,
-            right_loop,
-        ) in self.knit_graph.braid_graph.loop_crossing_graph.edges:
-            crossing_direction = self.knit_graph.braid_graph.get_crossing(left_loop, right_loop)
+        for left_loop, right_loop, crossing_direction in self.knit_graph.braid_graph.edge_iter:
             for left_parent in left_loop.parent_loops:
                 self._add_stitch_edge(left_parent, left_loop, crossing_direction)
             for right_parent in right_loop.parent_loops:
@@ -346,7 +343,7 @@ class Knit_Graph_Visualizer:
         """Add all stitch edges to the visualization trace data based on their type and cable position."""
         self._add_cable_edges()
         # Add remaining stitches as though they have no cable crossing.
-        for u, v in self.knit_graph.stitch_graph.edges:
+        for u, v, _ in self.knit_graph.edge_iter:
             if (
                 not self._stitch_has_position(u, v)  # This edge has not been placed
                 and self._loop_has_position(u)
@@ -354,12 +351,10 @@ class Knit_Graph_Visualizer:
             ):  # Both loops do have positions.
                 self._add_stitch_edge(u, v, Crossing_Direction.No_Cross)
 
-    def _add_stitch_edge(self, u: Loop, v: Loop, crossing_direction: Crossing_Direction) -> None:
+    def _add_stitch_edge(self, u: LoopT, v: LoopT, crossing_direction: Crossing_Direction) -> None:
         """Add a single stitch edge to the appropriate trace data based on stitch type and cable crossing."""
         pull_direction = self.knit_graph.get_pull_direction(u, v)
-        if pull_direction is None:
-            return  # No edge between these loops
-        elif pull_direction is Pull_Direction.BtF:  # Knit Stitch:
+        if pull_direction is Pull_Direction.BtF:  # Knit Stitch:
             if crossing_direction is Crossing_Direction.Over_Right:
                 trace_data = self._top_knit_trace_data
             elif crossing_direction is Crossing_Direction.Under_Right:
@@ -448,19 +443,13 @@ class Knit_Graph_Visualizer:
 
     def _shift_knit_purl(self, shift: float = 0.1) -> None:
         """Adjust the horizontal position of loops to visually distinguish knit from purl stitches."""
-        has_knits = any(
-            self.knit_graph.get_pull_direction(u, v) is Pull_Direction.BtF
-            for u, v in self.knit_graph.stitch_graph.edges
-        )
-        has_purls = any(
-            self.knit_graph.get_pull_direction(u, v) is Pull_Direction.FtB
-            for u, v in self.knit_graph.stitch_graph.edges
-        )
+        has_knits = any(pd is Pull_Direction.BtF for _u, _v, pd in self.knit_graph.edge_iter)
+        has_purls = any(pd is Pull_Direction.FtB for _u, _v, pd in self.knit_graph.edge_iter)
         if not (has_knits and has_purls):
             return  # Don't make any changes, because all stitches are of the same type.
         yarn_over_align = set()
         for loop in self.data_graph.nodes:
-            if not loop.has_parent_loops():  # Yarn-over
+            if not loop.has_parent_loops:  # Yarn-over
                 if self.knit_graph.has_child_loop(loop):  # Align yarn-overs with one child to its child
                     yarn_over_align.add(loop)
                 continue  # Don't shift yarn-overs
@@ -477,7 +466,7 @@ class Knit_Graph_Visualizer:
 
         for loop in yarn_over_align:
             child_loop = self.knit_graph.get_child_loop(loop)
-            assert isinstance(child_loop, Loop)
+            assert child_loop is not None
             self._set_x_of_loop(loop, self._get_x_of_loop(child_loop))
 
     def _shift_loops_by_float_alignment(self, float_increment: float = 0.25) -> None:
@@ -501,11 +490,11 @@ class Knit_Graph_Visualizer:
                             back_loop, self._get_y_of_loop(back_loop) + float_increment
                         )  # shift loop up to show it is behind the float.
 
-    def _get_course_of_loop(self, loop: Loop) -> Course:
+    def _get_course_of_loop(self, loop: LoopT) -> Course[LoopT]:
         """Get the course (horizontal row) that contains the specified loop."""
         return self.loops_to_course[loop]
 
-    def _place_loop(self, loop: Loop, x: float, y: float) -> None:
+    def _place_loop(self, loop: LoopT, x: float, y: float) -> None:
         """Add a loop to the visualization data graph at the specified coordinates."""
         if self._loop_has_position(loop):
             self._set_x_of_loop(loop, x)
@@ -513,39 +502,39 @@ class Knit_Graph_Visualizer:
         else:
             self.data_graph.add_node(loop, x=x, y=y)
 
-    def _set_x_of_loop(self, loop: Loop, x: float) -> None:
+    def _set_x_of_loop(self, loop: LoopT, x: float) -> None:
         """Update the x coordinate of a loop that already exists in the visualization data graph."""
         if self._loop_has_position(loop):
             self.data_graph.nodes[loop]["x"] = x
         else:
             raise KeyError(f"Loop {loop} is not in the data graph")
 
-    def _set_y_of_loop(self, loop: Loop, y: float) -> None:
+    def _set_y_of_loop(self, loop: LoopT, y: float) -> None:
         """Update the y coordinate of a loop that already exists in the visualization data graph."""
         if self._loop_has_position(loop):
             self.data_graph.nodes[loop]["y"] = y
         else:
             raise KeyError(f"Loop {loop} is not in the data graph")
 
-    def _get_x_of_loop(self, loop: Loop) -> float:
+    def _get_x_of_loop(self, loop: LoopT) -> float:
         """Get the x coordinate of a loop from the visualization data graph."""
         if self._loop_has_position(loop):
             return float(self.data_graph.nodes[loop]["x"])
         else:
             raise KeyError(f"Loop {loop} is not in the data graph")
 
-    def _get_y_of_loop(self, loop: Loop) -> float:
+    def _get_y_of_loop(self, loop: LoopT) -> float:
         """Get the y coordinate of a loop from the visualization data graph."""
         if self._loop_has_position(loop):
             return float(self.data_graph.nodes[loop]["y"])
         else:
             raise KeyError(f"Loop {loop} is not in the data graph")
 
-    def _loop_has_position(self, loop: Loop) -> bool:
+    def _loop_has_position(self, loop: LoopT) -> bool:
         """Check if a loop has been positioned in the visualization data graph."""
         return bool(self.data_graph.has_node(loop))
 
-    def _stitch_has_position(self, u: Loop, v: Loop) -> bool:
+    def _stitch_has_position(self, u: LoopT, v: LoopT) -> bool:
         """Check if a stitch edge between two loops has been added to the visualization data graph."""
         return bool(self.data_graph.has_edge(u, v))
 
@@ -559,7 +548,7 @@ class Knit_Graph_Visualizer:
             self._balance_course(course)
             y += course_spacing  # Shift y coordinate up with each course
 
-    def _swap_loops_in_cables(self, course: Course) -> None:
+    def _swap_loops_in_cables(self, course: Course[LoopT]) -> None:
         """Swap the horizontal positions of loops involved in cable crossings within a course."""
         for left_loop in course:
             for right_loop in self.knit_graph.braid_graph.left_crossing_loops(left_loop):
@@ -571,7 +560,7 @@ class Knit_Graph_Visualizer:
                     self._set_x_of_loop(left_loop, self._get_x_of_loop(right_loop))
                     self._set_x_of_loop(right_loop, left_x)
 
-    def _place_loops_by_parents(self, course: Course, y: float) -> None:
+    def _place_loops_by_parents(self, course: Course[LoopT], y: float) -> None:
         """Position loops in a course based on the average position of their parent loops."""
         for _x, loop in enumerate(course):
             self._set_loop_x_by_parent_average(loop, y)
@@ -584,7 +573,7 @@ class Knit_Graph_Visualizer:
         assert len(self._loops_need_placement) == 0, f"Loops {self._loops_need_placement} remain unplaced."
         # A loops past the first course should have at least one yarn neighbor to place them.
 
-    def _set_loop_x_by_parent_average(self, loop: Loop, y: float) -> None:
+    def _set_loop_x_by_parent_average(self, loop: LoopT, y: float) -> None:
         """Set the x coordinate of a loop based on the weighted average position of its parent loops."""
         if len(loop.parent_loops) == 0:
             self._loops_need_placement.add(loop)
@@ -604,7 +593,7 @@ class Knit_Graph_Visualizer:
         x = sum(parent_positions.keys()) / sum(parent_positions.values())
         self._place_loop(loop, x=x, y=y)
 
-    def _set_loop_between_yarn_neighbors(self, loop: Loop, y: float, spacing: float = 1.0) -> bool:
+    def _set_loop_between_yarn_neighbors(self, loop: LoopT, y: float, spacing: float = 1.0) -> bool:
         """Position a loop based on the average position of its neighboring loops along the yarn."""
         spacing = abs(spacing)  # Ensure spacing is positive.
         x_neighbors = []
@@ -647,13 +636,13 @@ class Knit_Graph_Visualizer:
         self.base_width = max_x - self.base_left
 
     def _get_base_round_course_positions(
-        self, base_course: Course, loop_space: float = 1.0, back_shift: float = 0.5
+        self, base_course: Course[LoopT], loop_space: float = 1.0, back_shift: float = 0.5
     ) -> None:
         """Position loops in the base course for circular/tube knitting structure."""
         split_index = len(base_course) // 2  # Split the course in half to form a tube.
-        front_loops: list[Loop] = cast(list[Loop], base_course[:split_index])
-        front_set: set[Loop] = set(front_loops)
-        back_loops: list[Loop] = cast(list[Loop], base_course[split_index:])
+        front_loops = base_course[:split_index]
+        front_set = set(front_loops)
+        back_loops = base_course[split_index:]
         if self.start_on_left:
             back_loops = [*reversed(back_loops)]
         else:
@@ -677,15 +666,12 @@ class Knit_Graph_Visualizer:
             else:
                 self._place_loop(back_loop, x=(x * loop_space) - back_shift, y=0)
 
-    def _get_base_row_course_positions(self, base_course: Course, loop_space: float = 1.0) -> None:
+    def _get_base_row_course_positions(self, base_course: Course[LoopT], loop_space: float = 1.0) -> None:
         """Position loops in the base course for flat/row knitting structure."""
-        loops: Iterable[Loop] = list(base_course)
-        if not self.start_on_left:
-            loops = reversed(base_course)
-        for x, loop in enumerate(loops):
+        for x, loop in enumerate(base_course if self.start_on_left else reversed(base_course)):
             self._place_loop(loop, x=x * loop_space, y=0)
 
-    def _left_align_course(self, course: Course) -> None:
+    def _left_align_course(self, course: Course[LoopT]) -> None:
         """Align the leftmost loop of a course to x=0 if left alignment is enabled."""
         if self.left_zero_align:
             current_left = min(self._get_x_of_loop(loop) for loop in course)
@@ -693,21 +679,23 @@ class Knit_Graph_Visualizer:
                 for loop in course:
                     self._set_x_of_loop(loop, self._get_x_of_loop(loop) - current_left)
 
-    def _balance_course(self, course: Course) -> None:
+    def _balance_course(self, course: Course[LoopT]) -> None:
         """Scale the width of a course to match the base course width if balancing is enabled."""
         current_left = min(self._get_x_of_loop(loop) for loop in course)
         max_x = max(self._get_x_of_loop(loop) for loop in course)
         course_width = max_x - current_left
         if self.balance_by_base_width and course_width != self.base_width:
 
-            def _target_distance_from_left(l: Loop) -> float:
+            def _target_distance_from_left(l: LoopT) -> float:
                 current_distance_from_left = self._get_x_of_loop(l) - current_left
                 return (current_distance_from_left * self.base_width) / course_width
 
             for loop in course:
                 self._set_x_of_loop(loop, _target_distance_from_left(loop) + current_left)
 
-    def x_coordinate_differences(self, other: Knit_Graph_Visualizer) -> dict[Loop, tuple[float | None, float | None]]:
+    def x_coordinate_differences(
+        self, other: Knit_Graph_Visualizer[LoopT]
+    ) -> dict[LoopT, tuple[float | None, float | None]]:
         """Find the differences in x-coordinates between two knitgraph visualizations. Used for testing and comparing visualization results.
 
         Args:
@@ -721,28 +709,28 @@ class Knit_Graph_Visualizer:
             ** The second value of each tuple is the x-coordinate of the loop in the other visualization or NOne if the loop is not in that visualization.
 
         """
-        differences: dict[Loop, tuple[float | None, float | None]] = {
-            cast(Loop, l): (self._get_x_of_loop(l), None)
+        differences: dict[LoopT, tuple[float | None, float | None]] = {
+            cast(LoopT, l): (self._get_x_of_loop(l), None)
             for l in self.data_graph.nodes
             if not other.data_graph.has_node(l)
         }
         differences.update(
             {
-                cast(Loop, l): (None, other._get_x_of_loop(l))
+                cast(LoopT, l): (None, other._get_x_of_loop(l))
                 for l in other.data_graph.nodes
                 if not self.data_graph.has_node(l)
             }
         )
         differences.update(
             {
-                cast(Loop, l): (self._get_x_of_loop(l), other._get_x_of_loop(l))
+                cast(LoopT, l): (self._get_x_of_loop(l), other._get_x_of_loop(l))
                 for l in self.data_graph.nodes
                 if other.data_graph.has_node(l) and self._get_x_of_loop(l) != other._get_x_of_loop(l)
             }
         )
         return differences
 
-    def y_coordinate_differences(self, other: Knit_Graph_Visualizer) -> dict[Loop, tuple[float | None, float | None]]:
+    def y_coordinate_differences(self, other: Knit_Graph_Visualizer) -> dict[LoopT, tuple[float | None, float | None]]:
         """Find the differences in y-coordinates between two knitgraph visualizations. Used for testing and comparing visualization results.
 
         Args:
@@ -756,21 +744,21 @@ class Knit_Graph_Visualizer:
             ** The second value of each tuple is the y-coordinate of the loop in the other visualization or NOne if the loop is not in that visualization.
 
         """
-        differences: dict[Loop, tuple[float | None, float | None]] = {
-            cast(Loop, l): (self._get_y_of_loop(l), None)
+        differences: dict[LoopT, tuple[float | None, float | None]] = {
+            cast(LoopT, l): (self._get_y_of_loop(l), None)
             for l in self.data_graph.nodes
             if not other.data_graph.has_node(l)
         }
         differences.update(
             {
-                cast(Loop, l): (None, other._get_y_of_loop(l))
+                cast(LoopT, l): (None, other._get_y_of_loop(l))
                 for l in other.data_graph.nodes
                 if not self.data_graph.has_node(l)
             }
         )
         differences.update(
             {
-                cast(Loop, l): (self._get_y_of_loop(l), other._get_y_of_loop(l))
+                cast(LoopT, l): (self._get_y_of_loop(l), other._get_y_of_loop(l))
                 for l in self.data_graph.nodes
                 if other.data_graph.has_node(l) and self._get_y_of_loop(l) != other._get_y_of_loop(l)
             }

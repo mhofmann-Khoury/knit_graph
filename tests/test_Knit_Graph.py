@@ -23,9 +23,9 @@ class TestKnit_Graph(TestCase):
         for loop in knit_graph:
             self.assertTrue(loop in knit_graph)
 
-        for p, c, d in knit_graph.stitch_iter:
+        for p, c, pull_direction in knit_graph.stitch_iter:
             self.assertTrue((p, c) in knit_graph)
-            self.assertIs(d["pull_direction"], Pull_Direction.BtF)
+            self.assertIs(pull_direction, Pull_Direction.BtF)
 
     def test_mesh(self):
         generators = [lace_mesh]
@@ -91,10 +91,10 @@ class TestKnit_Graph(TestCase):
 
     def test_delete_loop(self):
         knit_graph = jersey_swatch(4, 4)
-        self.assertEqual(len(knit_graph.stitch_graph), 20)
+        self.assertEqual(len(knit_graph), 20)
         loop_0 = knit_graph[0]
         knit_graph.remove_loop(loop_0)
-        self.assertEqual(len(knit_graph.stitch_graph), 19)
+        self.assertEqual(len(knit_graph), 19)
         self.assertEqual(len(loop_0.yarn), 19)
         self.assertNotIn(loop_0, loop_0.yarn)
         loop_5 = knit_graph[5]
@@ -105,14 +105,14 @@ class TestKnit_Graph(TestCase):
         knit_graph.remove_loop(loop_5)
         for p in parent_5:
             self.assertFalse(knit_graph.has_child_loop(p))
-        self.assertFalse(child_5.has_parent_loops())
-        self.assertEqual(len(knit_graph.stitch_graph), 18)
+        self.assertFalse(child_5.has_parent_loops)
+        self.assertEqual(len(knit_graph), 18)
         self.assertEqual(len(loop_5.yarn), 18)
         self.assertNotIn(loop_5, loop_5.yarn)
 
     def test_delete_loop_floats(self):
         knit_graph = jersey_tube(3, 4)
-        self.assertEqual(len(knit_graph.stitch_graph), 30)
+        self.assertEqual(len(knit_graph), 30)
         loop_10 = knit_graph[10]
         yarn = loop_10.yarn
         loop_7 = knit_graph[7]
@@ -124,7 +124,7 @@ class TestKnit_Graph(TestCase):
         self.assertEqual(len(behind_float), 1)
         self.assertIn(loop_10, behind_float)
         knit_graph.remove_loop(loop_10)
-        self.assertEqual(len(knit_graph.stitch_graph), 29)
+        self.assertEqual(len(knit_graph), 29)
         self.assertTrue(yarn.has_float(loop_9, loop_11))
         front_float = yarn.get_loops_in_front_of_float(loop_9, loop_11)
         self.assertEqual(len(front_float), 2)
