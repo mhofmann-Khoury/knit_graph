@@ -60,6 +60,14 @@ class Loop:
         """
         return len(self.parent_loops) > 0
 
+    @property
+    def parent_loop_ids(self) -> list[int]:
+        """
+        Returns:
+            list[int]: The ids of the parent loops of this loop in their stacking order.
+        """
+        return [p.loop_id for p in self.parent_loops]
+
     def prior_loop_on_yarn(self) -> Self | None:
         """Get the loop that precedes this loop on the same yarn.
 
