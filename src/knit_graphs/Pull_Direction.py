@@ -18,6 +18,7 @@ class Pull_Direction(Enum):
     BtF = "Knit"
     FtB = "Purl"
 
+    @property
     def opposite(self) -> Pull_Direction:
         """Get the opposite pull direction of this direction.
 
@@ -35,7 +36,7 @@ class Pull_Direction(Enum):
         Returns:
             Pull_Direction: The opposite pull direction, same as calling opposite().
         """
-        return self.opposite()
+        return self.opposite
 
     def __invert__(self) -> Pull_Direction:
         """Get the opposite pull direction using the bitwise inversion operator.
@@ -43,7 +44,7 @@ class Pull_Direction(Enum):
         Returns:
             Pull_Direction: The opposite pull direction, same as calling opposite().
         """
-        return self.opposite()
+        return self.opposite
 
     def __str__(self) -> str:
         """Get the string representation of the pull direction.

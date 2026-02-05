@@ -25,14 +25,34 @@ class Loop_Braid_Graph(Directed_Loop_Graph[LoopT, Crossing_Direction]):
         """Initialize an empty loop braid graph with no crossings."""
         super().__init__()
 
+    def get_crossing(self, left_loop: LoopT, right_loop: LoopT) -> Crossing_Direction:
+        """
+        Args:
+            left_loop (Loop): The loop on the left side of the crossing.
+            right_loop (Loop): The loop on the right side of the crossing.
+
+        Returns:
+            Crossing_Direction: The crossing direction between the left and right loop. Defaults to No_Cross if no explicit crossing was previously defined.
+        """
+        if self.has_edge(left_loop, right_loop):
+            return self.get_edge(left_loop, right_loop)
+        elif self.has_edge(right_loop, left_loop):
+            return self.get_edge(right_loop, left_loop).opposite
+        else:
+            return Crossing_Direction.No_Cross
+
     def add_crossing(self, left_loop: LoopT, right_loop: LoopT, crossing_direction: Crossing_Direction) -> None:
         """Add a crossing edge between two loops with the specified crossing direction.
+
+        If the opposite crossing edge has already been defined, it will be removed from the graph so that only one crossing relationship is ever defined for each pair of the loops.
 
         Args:
             left_loop (Loop): The loop on the left side of the crossing.
             right_loop (Loop): The loop on the right side of the crossing.
             crossing_direction (Crossing_Direction): The direction of the crossing (over, under, or none) between the loops.
         """
+        if self.has_edge(right_loop, left_loop):  # Remove the edge that will be implied by the new crossing formation.
+            self.remove_edge(right_loop, left_loop)
         if left_loop not in self:
             self.add_loop(left_loop)
         if right_loop not in self:
@@ -74,33 +94,3 @@ class Loop_Braid_Graph(Directed_Loop_Graph[LoopT, Crossing_Direction]):
                 for l in self.predecessors(right_loop)
                 if self.get_crossing(l, right_loop) is not Crossing_Direction.No_Cross
             }
-
-    def get_edge(self, left_loop: LoopT | int, right_loop: LoopT | int) -> Crossing_Direction:
-        """Get the crossing direction between two loops, creating a no-cross edge if none exists.
-
-        If no edge exists between the loops, this method automatically adds a no-crossing edge to maintain consistency in the graph structure.
-
-        Args:
-            left_loop (Loop): The loop on the left side of the crossing.
-            right_loop (Loop): The loop on the right side of the crossing.
-
-        Returns:
-            Crossing_Direction: The crossing direction between the left and right loop. Defaults to No_Cross if no explicit crossing was previously defined.
-        """
-        if not self.has_edge(left_loop, right_loop):
-            self.add_edge(left_loop, right_loop, Crossing_Direction.No_Cross)
-        return super().get_edge(left_loop, right_loop)
-
-    def get_crossing(self, left_loop: LoopT, right_loop: LoopT) -> Crossing_Direction:
-        """Get the crossing direction between two loops, creating a no-cross edge if none exists.
-
-        If no edge exists between the loops, this method automatically adds a no-crossing edge to maintain consistency in the graph structure.
-
-        Args:
-            left_loop (Loop): The loop on the left side of the crossing.
-            right_loop (Loop): The loop on the right side of the crossing.
-
-        Returns:
-            Crossing_Direction: The crossing direction between the left and right loop. Defaults to No_Cross if no explicit crossing was previously defined.
-        """
-        return self.get_edge(left_loop, right_loop)

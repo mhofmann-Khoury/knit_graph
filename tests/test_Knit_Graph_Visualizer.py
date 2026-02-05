@@ -28,7 +28,7 @@ class Test_Knitting_Visualizers_Safe(TestCase):
         os.environ["TESTING"] = "1"
 
         # Control visualization display - set to True only for local debugging
-        self.show_visualization = False  # Set this to True for local testing if you want to see figures
+        self.show_visualization = True  # Set this to True for local testing if you want to see figures
 
         # If you want to see visualizations during local testing, uncomment the next line:
         # self.show_visualization = True
@@ -42,7 +42,7 @@ class Test_Knitting_Visualizers_Safe(TestCase):
     def test_cast_on_row_from_left(self):
         """Test visualization of cast-on row starting from left."""
         width = 10
-        knit_graph, yarn = co_loops(width)
+        builder, knit_graph, yarn = co_loops(width)
 
         # Use safe version for testing - no socket issues
         fig = visualize_knit_graph_safe(knit_graph, graph_title="Left Cast On")
@@ -54,7 +54,7 @@ class Test_Knitting_Visualizers_Safe(TestCase):
     def test_cast_on_row_from_right(self):
         """Test visualization of cast-on row starting from right."""
         width = 11
-        knit_graph, yarn = co_loops(width)
+        builder, knit_graph, yarn = co_loops(width)
 
         fig = visualize_knit_graph_safe(knit_graph, start_on_left=False, graph_title="Right Cast On")
 

@@ -5,7 +5,7 @@ This module contains the Course class which represents a horizontal row of loops
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Generic, TypeVar, overload
 
 from knit_graphs.Loop import Loop
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 LoopT = TypeVar("LoopT", bound=Loop)
 
 
-class Course(Generic[LoopT]):
+class Course(Sequence[LoopT], Generic[LoopT]):
     """Course object for organizing loops into knitting rows.
 
     A Course represents a horizontal row of loops in a knitting pattern.
@@ -137,11 +137,11 @@ class Course(Generic[LoopT]):
             i += 1
         return self[-1] in next_start.parent_loops
 
-    def __contains__(self, loop: Loop) -> bool:
+    def __contains__(self, loop: object) -> bool:
         """Check if a loop is contained in this course.
 
         Args:
-            loop (Loop): The loop to check for membership in this course.
+            loop (LoopT): The loop to check for membership in this course.
 
         Returns:
             bool: True if the loop is in this course, False otherwise.

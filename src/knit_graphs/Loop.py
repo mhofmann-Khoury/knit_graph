@@ -6,7 +6,10 @@ Loops are the fundamental building blocks of knitted structures and maintain rel
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Self
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Self, cast
+
+from knit_graphs.Pull_Direction import Pull_Direction
 
 if TYPE_CHECKING:
     from knit_graphs.Knit_Graph import Knit_Graph
@@ -20,13 +23,13 @@ class Loop:
     Each loop maintains its position in the yarn sequence and its relationships to other loops through stitch connections and floating elements.
 
     Attributes:
-        yarn (Typed_Yarn[Self]): The yarn that creates and holds this loop.
+        yarn (Yarn[Self]): The yarn that creates and holds this loop.
         parent_loops (list[Loop]): The list of parent loops that this loop is connected to through stitch edges.
         front_floats (dict[Loop, set[Loop]]): Mapping of loops involved in floats in front of this loop to the paired loops in the float.
         back_floats (dict[Loop, set[Loop]]): Mapping of loops involved in floats behind this loop to the paired loops in the float.
     """
 
-    def __init__(self, loop_id: int, yarn: Yarn, knit_graph: Knit_Graph) -> None:
+    def __init__(self, loop_id: int, yarn: Yarn[Self], knit_graph: Knit_Graph[Self]) -> None:
         """Construct a Loop object with the specified identifier and yarn.
 
         Args:
@@ -68,6 +71,29 @@ class Loop:
         """
         return [p.loop_id for p in self.parent_loops]
 
+    @property
+    def pull_directions(self) -> list[Pull_Direction]:
+        """
+        Returns:
+            list[Pull_Direction]: The pull direction of the stitches formed by this loop and its parents in stacking order of its parents.
+        """
+        return [self._knit_graph.get_pull_direction(p, cast(Self, self)) for p in self.parent_loops]
+
+    @property
+    def pull_direction(self) -> Pull_Direction:
+        """
+        Returns:
+            Pull_Direction: The majority pull-direction of the stitches formed with the parent loops or Back-To-Front (knit-stitch) if this loop has no parents.
+        """
+        if not self.has_parent_loops:
+            return Pull_Direction.BtF
+        elif len(self.parent_loops) == 1:
+            return self._knit_graph.get_pull_direction(self.parent_loops[0], cast(Self, self))
+        else:
+            knits = len([pd for pd in self.pull_directions if pd is Pull_Direction.BtF])
+            purls = len(self.parent_loops) - knits
+            return Pull_Direction.BtF if knits > purls else Pull_Direction.FtB
+
     def prior_loop_on_yarn(self) -> Self | None:
         """Get the loop that precedes this loop on the same yarn.
 
@@ -107,6 +133,24 @@ class Loop:
             bool: True if the float between u and v passes in front of this loop, False otherwise.
         """
         return u in self.front_floats and v in self.front_floats and v in self.front_floats[u]
+
+    @staticmethod
+    def majority_pull_direction(loops: Sequence[Loop]) -> Pull_Direction:
+        """
+        Args:
+            loops (Sequence[Loop]): The loops to find the majority pull direction of.
+
+        Returns:
+            Pull_Direction: The majority pull direction of the given loops or Back-to-Front (i.e., knit-stitch) there are no loops.
+        """
+        if len(loops) == 0:
+            return Pull_Direction.BtF
+        elif len(loops) == 1:
+            return loops[0].pull_direction
+        else:
+            knits = len([l.pull_direction for l in loops if l.pull_direction is Pull_Direction.BtF])
+            purls = len(loops) - knits
+            return Pull_Direction.BtF if knits > purls else Pull_Direction.FtB
 
     def add_loop_in_front_of_float(self, u: Self, v: Self) -> None:
         """Set this loop to be in front of the float between loops u and v.
@@ -217,6 +261,3 @@ class Loop:
             str: String representation showing "Loop {loop_id}".
         """
         return f"Loop {self.loop_id}"
-
-
-# Define a TypeVar constrained to Loop or its subclasses
