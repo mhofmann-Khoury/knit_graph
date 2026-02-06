@@ -183,7 +183,7 @@ class Knit_Graph_Builder(Generic[LoopT]):
         Returns:
             Yarn[LoopT]: The new yarn in the Knit_Graph.
         """
-        return self._yarn_class(yarn_properties, self.knit_graph, **yarn_kwargs)
+        return self._yarn_class(self.knit_graph, yarn_properties, **yarn_kwargs)
 
     def _make_loop(self, yarn: Yarn[LoopT], **loop_kwargs: Any) -> LoopT:
         """

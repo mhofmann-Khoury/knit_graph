@@ -14,6 +14,7 @@ from knit_graphs.directed_loop_graph import Directed_Loop_Graph, Float_Edge
 from knit_graphs.knit_graph_errors.knit_graph_error import Use_Cut_Yarn_ValueError
 from knit_graphs.Loop import Loop
 
+#
 if TYPE_CHECKING:
     from knit_graphs.Knit_Graph import Knit_Graph
 
@@ -78,8 +79,8 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
 
     def __init__(
         self,
+        knit_graph: Knit_Graph[LoopT],
         yarn_properties: Yarn_Properties | None = None,
-        knit_graph: Knit_Graph[LoopT] | None = None,
         instance: int = 0,
         **_kwargs: Any,
     ):
@@ -90,6 +91,7 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
             knit_graph (None | Knit_Graph, optional): The knit graph that will own this yarn. Can be None for standalone yarns. Defaults to None.
             instance (int, optional): The instance of this yarn. As new yarns are formed by cuts, the instance will increase. Defaults to 0 (first instance of this yarn).
         """
+        self._yarn_kwargs: dict[str, Any] = _kwargs
         super().__init__()
         self._instance: int = instance
         self._is_cut: bool = False
@@ -98,7 +100,7 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
         self.properties: Yarn_Properties = yarn_properties
         self._first_loop: LoopT | None = None
         self._last_loop: LoopT | None = None
-        self._knit_graph: Knit_Graph[LoopT] = knit_graph if knit_graph is not None else Knit_Graph[LoopT]()
+        self._knit_graph: Knit_Graph[LoopT] = knit_graph
         if self not in self.knit_graph.yarns:
             self.knit_graph.add_yarn(self)
 
@@ -109,15 +111,6 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
             Knit_Graph | Knit_Graph: The knit graph that owns this yarn, or None if not associated with a graph.
         """
         return self._knit_graph
-
-    @knit_graph.setter
-    def knit_graph(self, knit_graph: Knit_Graph[LoopT]) -> None:
-        """Set the knit graph that owns this yarn.
-
-        Args:
-            knit_graph (Knit_Graph): The knit graph to associate with this yarn.
-        """
-        self._knit_graph = knit_graph
 
     @property
     def last_loop(self) -> LoopT | None:
@@ -400,7 +393,7 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
             Yarn[LoopT]: New yarn of the same type after cutting this yarn.
         """
         self._is_cut = True
-        return self.__class__(self.properties, self.knit_graph, self._instance + 1)
+        return self.__class__(self.knit_graph, self.properties, self._instance + 1, **self._yarn_kwargs)
 
     def __str__(self) -> str:
         """Get the string representation of this yarn.
