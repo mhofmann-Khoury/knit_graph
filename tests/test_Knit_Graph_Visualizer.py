@@ -28,7 +28,7 @@ class Test_Knitting_Visualizers_Safe(TestCase):
         os.environ["TESTING"] = "1"
 
         # Control visualization display - set to True only for local debugging
-        self.show_visualization = True  # Set this to True for local testing if you want to see figures
+        self.show_visualization = False  # Set this to True for local testing if you want to see figures
 
         # If you want to see visualizations during local testing, uncomment the next line:
         # self.show_visualization = True

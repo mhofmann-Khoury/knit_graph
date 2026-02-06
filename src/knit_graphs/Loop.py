@@ -7,7 +7,7 @@ Loops are the fundamental building blocks of knitted structures and maintain rel
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Self, cast
+from typing import TYPE_CHECKING, Any, Self, cast
 
 from knit_graphs.Pull_Direction import Pull_Direction
 
@@ -29,18 +29,21 @@ class Loop:
         back_floats (dict[Loop, set[Loop]]): Mapping of loops involved in floats behind this loop to the paired loops in the float.
     """
 
-    def __init__(self, loop_id: int, yarn: Yarn[Self], knit_graph: Knit_Graph[Self]) -> None:
+    def __init__(self, yarn: Yarn[Self], loop_id: int | None = None, **_kwargs: Any) -> None:
         """Construct a Loop object with the specified identifier and yarn.
 
         Args:
-            loop_id (int): A unique identifier for the loop, must be non-negative.
-            yarn (Typed_Yarn): The yarn that creates and holds this loop.
+            yarn (Yarn[Self]): The yarn that creates and holds this loop.
+            loop_id (int, optional): A unique identifier for the loop, must be non-negative. Defaults to the next id of the knitgraph that owns the given yarn.
+            yarn (Yarn[Self]): The yarn that creates and holds this loop.
         """
+        self.yarn: Yarn[Self] = yarn
+        self._knit_graph: Knit_Graph[Self] = yarn.knit_graph
+        if loop_id is None:
+            loop_id = 0 if self._knit_graph.last_loop is None else self._knit_graph.last_loop.loop_id + 1
         if loop_id < 0:
             raise ValueError(f"Loop identifier must be non-negative but got {loop_id}")
         self._loop_id: int = loop_id
-        self.yarn: Yarn[Self] = yarn
-        self._knit_graph: Knit_Graph[Self] = knit_graph
         self.parent_loops: list[Self] = []
         self.front_floats: dict[Self, set[Self]] = {}
         self.back_floats: dict[Self, set[Self]] = {}

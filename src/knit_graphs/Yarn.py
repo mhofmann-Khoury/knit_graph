@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Self, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Any, Self, TypeVar, overload
 
 from knit_graphs.directed_loop_graph import Directed_Loop_Graph, Float_Edge
 from knit_graphs.knit_graph_errors.knit_graph_error import Use_Cut_Yarn_ValueError
@@ -46,15 +46,6 @@ class Yarn_Properties:
         """
         return self.name
 
-    @staticmethod
-    def default_yarn() -> Yarn_Properties:
-        """Create a default yarn properties instance.
-
-        Returns:
-            Yarn_Properties: A default yarn instance with standard properties.
-        """
-        return Yarn_Properties()
-
     def __eq__(self, other: object) -> bool:
         """Check equality with another Yarn_Properties instance.
 
@@ -90,7 +81,7 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
         yarn_properties: Yarn_Properties | None = None,
         knit_graph: Knit_Graph[LoopT] | None = None,
         instance: int = 0,
-        loop_class: type[LoopT] | None = None,
+        **_kwargs: Any,
     ):
         """Initialize a yarn with the specified properties and optional knit graph association.
 
@@ -98,14 +89,12 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
             yarn_properties (None | Yarn_Properties, optional): The properties defining this yarn. If None, uses default properties. Defaults to standard properties.
             knit_graph (None | Knit_Graph, optional): The knit graph that will own this yarn. Can be None for standalone yarns. Defaults to None.
             instance (int, optional): The instance of this yarn. As new yarns are formed by cuts, the instance will increase. Defaults to 0 (first instance of this yarn).
-            loop_class (type[LoopT], optional): The type of loop to create by default in this class. Defaults to Loop class.
         """
         super().__init__()
         self._instance: int = instance
         self._is_cut: bool = False
-        self._loop_class: type[LoopT] = loop_class if loop_class is not None else cast(type[LoopT], Loop)
         if yarn_properties is None:
-            yarn_properties = Yarn_Properties.default_yarn()
+            yarn_properties = Yarn_Properties()
         self.properties: Yarn_Properties = yarn_properties
         self._first_loop: LoopT | None = None
         self._last_loop: LoopT | None = None
@@ -285,16 +274,7 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
         else:
             return self.get_edge(u, v).back_loops
 
-    def make_loop_on_end(self) -> LoopT:
-        """Create and add a new loop at the end of the yarn.
-
-        Returns:
-            Loop: The newly created loop that was added to the end of this yarn.
-        """
-        loop_id = self._next_loop_id()
-        return self.add_loop_to_end(self._new_loop(loop_id))
-
-    def _next_loop_id(self) -> int:
+    def next_loop_id(self) -> int:
         """
         Returns:
             int: The ID of the next loop to be added to this yarn based on the knit graph or, if no knit graph is associated with this yarn, based on the last loop on this yarn.
@@ -303,24 +283,6 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
             return 0
         else:
             return self.knit_graph.last_loop.loop_id + 1
-
-    def _new_loop(self, loop_id: int) -> LoopT:
-        """
-        Args:
-            loop_id (int): The loop id to create a new loop.
-
-        Returns:
-            LoopT: A loop on this yarn with the given id.
-
-        Raises:
-            Use_Cut_Yarn_ValueError: If the yarn has been cut and can no longer form loops.
-        """
-        if self.is_cut:
-            raise Use_Cut_Yarn_ValueError(self)
-        elif self.first_loop is not None:
-            return self.first_loop.__class__(loop_id, self, self.knit_graph)  # type: ignore[arg-type]
-        else:
-            return self._loop_class(loop_id, self, self.knit_graph)  # type: ignore[arg-type]
 
     def remove_loop(self, loop: LoopT | int) -> None:
         """
@@ -379,9 +341,14 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
         """Insert a loop into the yarn sequence after the specified prior loop.
 
         Args:
-            loop (Loop): The loop to be added to this yarn.
+            loop (Loop | int, optional): The loop or loop id to create a new loop. Defaults to a new loop with the id of the next loop along this yarn.
             prior_loop (Loop | None): The loop that should come before this loop on the yarn. If None, defaults to the last loop (adding to end of yarn).
+
+        Raises:
+            Use_Cut_Yarn_ValueError: If the yarn is cut and should not form new loops.
         """
+        if self.is_cut:
+            raise Use_Cut_Yarn_ValueError(self)
         super().add_loop(loop)
         if self.last_loop is None:
             self._last_loop = loop
@@ -433,7 +400,7 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
             Yarn[LoopT]: New yarn of the same type after cutting this yarn.
         """
         self._is_cut = True
-        return self.__class__(self.properties, self.knit_graph, self._instance + 1, self._loop_class)
+        return self.__class__(self.properties, self.knit_graph, self._instance + 1)
 
     def __str__(self) -> str:
         """Get the string representation of this yarn.

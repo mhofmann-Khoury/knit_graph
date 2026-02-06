@@ -20,8 +20,15 @@ class Knit_Graph_Builder(Generic[LoopT]):
         loop_class: type[LoopT] | None = None,
         yarn_class: type[Yarn[LoopT]] | None = None,
     ):
-        self._loop_class: type[LoopT] = loop_class if loop_class is not None else cast(type[LoopT], Loop)
-        self._yarn_class: type[Yarn[LoopT]] = yarn_class if yarn_class is not None else cast(type[Yarn[LoopT]], Yarn)
+        if loop_class is not None:
+            self._loop_class: type[LoopT] = loop_class
+        else:
+            self._loop_class: type[LoopT] = cast(type[LoopT], Loop)
+
+        if yarn_class is not None:
+            self._yarn_class: type[Yarn[LoopT]] = yarn_class
+        else:
+            self._yarn_class: type[Yarn[LoopT]] = cast(type[Yarn[LoopT]], Yarn)
         self.knit_graph: Knit_Graph[LoopT] = Knit_Graph[LoopT]()
         self._first_yarn: Yarn[LoopT] | None = None
 
@@ -30,11 +37,12 @@ class Knit_Graph_Builder(Generic[LoopT]):
         Create and add a new yarn to the Knit_Graph with the given properties.
         Args:
             yarn_properties (Yarn_Properties, optional): The properties of the yarn. Defaults to standard yarn-properties.
+            **yarn_kwargs (Any, optional): Additional keyword arguments for forming the yarn. Defaults to no keyword arguments.
 
         Returns:
             Yarn[LoopT]: The new yarn in the Knit_Graph.
         """
-        yarn = self._new_yarn(yarn_properties, **yarn_kwargs)
+        yarn = self._make_yarn(yarn_properties, **yarn_kwargs)
         self.knit_graph.add_yarn(yarn)
         return yarn
 
@@ -68,31 +76,38 @@ class Knit_Graph_Builder(Generic[LoopT]):
             for loop in loops_in_front_of_float:
                 first_loop.yarn.add_loop_in_front_of_float(loop, first_loop)
 
-    def tuck(self, yarn: Yarn[LoopT]) -> LoopT:
+    def tuck(self, yarn: Yarn[LoopT], **loop_kwargs: Any) -> LoopT:
         """
         Forms a new loop at the end of the yarn with no parent loops.
         Args:
             yarn (Yarn[LoopT]): The yarn to form the loop from in the knitgraph.
+            **loop_kwargs (Any, optional): Additional keywords to support base-classes of Loop. Defaults to None.
 
         Returns:
             LoopT: The new loop formed by the tuck.
         """
-        return self._add_loop(yarn)
+        return self._make_loop(yarn, **loop_kwargs)
 
     def knit(
-        self, yarn: Yarn[LoopT], parent_loops: Sequence[LoopT], pull_direction: Pull_Direction | None = None
+        self,
+        yarn: Yarn[LoopT],
+        parent_loops: Sequence[LoopT],
+        pull_direction: Pull_Direction | None = None,
+        **loop_kwargs: Any,
     ) -> LoopT:
         """
         Args:
             yarn (Yarn[LoopT]): The yarn to form the loop from in the knitgraph.
             parent_loops (Sequence[LoopT]): The parent loops of stitch in their stacking order.
             pull_direction (Pull_Direction, optional): Pull direction of the stitch. Defaults to the dominant pull direction of a loop or Back-to-front (i.e., knit-stitch) if the loop has no parents.
+            **loop_kwargs (Any, optional): Additional keywords to support base-classes of Loop. Defaults to None.
+
         Returns:
             LoopT: The new loop formed by the knit.
         """
         if pull_direction is None:
             pull_direction = Loop.majority_pull_direction(parent_loops)
-        loop = self._add_loop(yarn)
+        loop = self._make_loop(yarn, **loop_kwargs)
         for parent in parent_loops:
             self.knit_graph.connect_loops(parent, loop, pull_direction)
         return loop
@@ -136,6 +151,7 @@ class Knit_Graph_Builder(Generic[LoopT]):
         over_loops_to_left: Sequence[LoopT] | None = None,
         under_loops_to_right: Sequence[LoopT] | None = None,
         under_loops_to_left: Sequence[LoopT] | None = None,
+        **loop_kwargs: Any,
     ) -> LoopT:
         """
 
@@ -147,6 +163,7 @@ class Knit_Graph_Builder(Generic[LoopT]):
             over_loops_to_left (Sequence[LoopT], optional): The loops to cross over to the left. Defaults to no loops.
             under_loops_to_right (Sequence[LoopT], optional): The loops to cross under to the right. Defaults to no loops.
             under_loops_to_left (Sequence[LoopT], optional): The loops to cross under to the left. Defaults to no loops.
+            **loop_kwargs (Any, optional): Additional keyword arguments for forming the loop. Defaults to no keyword arguments.
 
         Returns:
             LoopT: The loop formed in the split.
@@ -155,9 +172,9 @@ class Knit_Graph_Builder(Generic[LoopT]):
             pull_direction = Loop.majority_pull_direction(parent_loops)
         for loop in parent_loops:
             self.xfer(loop, over_loops_to_right, over_loops_to_left, under_loops_to_right, under_loops_to_left)
-        return self.knit(yarn, parent_loops, pull_direction)
+        return self.knit(yarn, parent_loops, pull_direction, **loop_kwargs)
 
-    def _new_yarn(self, yarn_properties: Yarn_Properties | None = None, **yarn_kwargs: Any) -> Yarn[LoopT]:
+    def _make_yarn(self, yarn_properties: Yarn_Properties | None = None, **yarn_kwargs: Any) -> Yarn[LoopT]:
         """
         Args:
             yarn_properties (Yarn_Properties, optional): The properties of the yarn. Defaults to standard yarn-properties.
@@ -166,22 +183,20 @@ class Knit_Graph_Builder(Generic[LoopT]):
         Returns:
             Yarn[LoopT]: The new yarn in the Knit_Graph.
         """
-        if self._first_yarn is None:
-            self._first_yarn = self._yarn_class(yarn_properties, self.knit_graph, loop_class=self._loop_class)
-            return self._first_yarn
-        else:
-            return self._first_yarn.__class__(yarn_properties, self.knit_graph, loop_class=self._loop_class)
+        return self._yarn_class(yarn_properties, self.knit_graph, **yarn_kwargs)
 
-    def _add_loop(self, yarn: Yarn[LoopT]) -> LoopT:
+    def _make_loop(self, yarn: Yarn[LoopT], **loop_kwargs: Any) -> LoopT:
         """
         Create a loop at the end of the given yarn and add it to the Knit_Graph.
         Args:
             yarn (Yarn[LoopT]): The yarn to form the loop from in the knitgraph.
+            **loop_kwargs (Any, optional): Additional keywords to support base-classes of Loop. Defaults to None.
 
         Returns:
             LoopT: The new loop in the Knit_Graph.
         """
-        loop = yarn.make_loop_on_end()
+        loop = self._loop_class(yarn, **loop_kwargs)  # type: ignore[arg-type]
+        yarn.add_loop_to_end(loop)
         if yarn.knit_graph is not self.knit_graph:
             self.knit_graph.add_loop(loop)
         return loop
