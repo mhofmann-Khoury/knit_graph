@@ -35,7 +35,6 @@ class Loop:
         Args:
             yarn (Yarn[Self]): The yarn that creates and holds this loop.
             loop_id (int, optional): A unique identifier for the loop, must be non-negative. Defaults to the next id of the knitgraph that owns the given yarn.
-            yarn (Yarn[Self]): The yarn that creates and holds this loop.
         """
         self.yarn: Yarn[Self] = yarn
         self._knit_graph: Knit_Graph[Self] = yarn.knit_graph

@@ -87,8 +87,8 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
         """Initialize a yarn with the specified properties and optional knit graph association.
 
         Args:
-            yarn_properties (None | Yarn_Properties, optional): The properties defining this yarn. If None, uses default properties. Defaults to standard properties.
             knit_graph (None | Knit_Graph, optional): The knit graph that will own this yarn. Can be None for standalone yarns. Defaults to None.
+            yarn_properties (None | Yarn_Properties, optional): The properties defining this yarn. If None, uses default properties. Defaults to standard properties.
             instance (int, optional): The instance of this yarn. As new yarns are formed by cuts, the instance will increase. Defaults to 0 (first instance of this yarn).
         """
         self._yarn_kwargs: dict[str, Any] = _kwargs
