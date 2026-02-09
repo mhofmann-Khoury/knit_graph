@@ -360,7 +360,7 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
             front_loop (Loop): The loop that is positioned in front of the float.
             start_of_float (Loop): The first loop in the float pair.
         """
-        end_of_float = self.next_loop(start_of_float)
+        end_of_float = start_of_float.next_loop_on_yarn()
         if end_of_float is not None:
             self.get_edge(start_of_float, end_of_float).add_loop_in_front_of_float(front_loop)
             front_loop.add_loop_in_front_of_float(start_of_float, end_of_float)
@@ -381,7 +381,7 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
             back_loop (Loop): The loop that is positioned behind the float.
             start_of_float (Loop): The first loop in the float pair.
         """
-        end_of_float = self.next_loop(start_of_float)
+        end_of_float = start_of_float.next_loop_on_yarn()
         if end_of_float is not None:
             self.get_edge(start_of_float, end_of_float).add_loop_behind_float(back_loop)
             back_loop.add_loop_behind_float(start_of_float, end_of_float)
