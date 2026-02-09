@@ -421,16 +421,16 @@ class Float_Edge(Generic[LoopT]):
             self.back_loops.remove(loop)
         self.front_loops.add(loop)
 
-    def add_loop_behind_float(self, loop: LoopT) -> None:
+    def add_loop_behind_float(self, back_loop: LoopT) -> None:
         """
         Adds the given loop to the set of loops behind this float.
         If the loop was in front of this float, it is swapped to be behind.
         Args:
-            loop (LoopT): The loop to put behind this float.
+            back_loop (LoopT): The loop to put behind this float.
         """
-        if loop in self.front_loops:
-            self.front_loops.remove(loop)
-        self.back_loops.add(loop)
+        if back_loop in self.front_loops:
+            self.front_loops.remove(back_loop)
+        self.back_loops.add(back_loop)
 
     def remove_loop_relative_to_floats(self, loop: LoopT) -> None:
         """

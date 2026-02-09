@@ -71,10 +71,10 @@ class Knit_Graph_Builder(Generic[LoopT]):
         """
         if loops_behind_float is not None:
             for loop in loops_behind_float:
-                first_loop.yarn.add_loop_behind_float(loop, first_loop)
+                first_loop.add_loop_behind_started_float(loop)
         if loops_in_front_of_float is not None:
             for loop in loops_in_front_of_float:
-                first_loop.yarn.add_loop_in_front_of_float(loop, first_loop)
+                first_loop.add_loop_in_front_of_started_float(loop)
 
     def tuck(self, yarn: Yarn[LoopT], **loop_kwargs: Any) -> LoopT:
         """

@@ -597,8 +597,8 @@ class Knit_Graph_Visualizer(Generic[LoopT]):
         """Position a loop based on the average position of its neighboring loops along the yarn."""
         spacing = abs(spacing)  # Ensure spacing is positive.
         x_neighbors = []
-        prior_loop = loop.prior_loop_on_yarn()
-        next_loop = loop.next_loop_on_yarn()
+        prior_loop = loop.prior_loop_on_yarn
+        next_loop = loop.next_loop_on_yarn
         if prior_loop is not None and self._loop_has_position(prior_loop):
             if (
                 self._get_y_of_loop(prior_loop) == y

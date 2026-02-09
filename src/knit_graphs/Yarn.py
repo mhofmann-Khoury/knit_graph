@@ -306,9 +306,9 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
                 Float_Edge[LoopT](front_loops=front_of_float_loops, back_loops=back_of_float_loops),
             )
             for front_loop in front_of_float_loops:
-                front_loop.add_loop_in_front_of_float(prior_loop, next_loop)
+                front_loop.put_in_front_of_float(prior_loop, next_loop)
             for back_loop in back_of_float_loops:
-                back_loop.add_loop_behind_float(prior_loop, next_loop)
+                back_loop.put_behind_float(prior_loop, next_loop)
         else:
             super().remove_loop(loop)
             if next_loop is None:  # This was the last loop, make the prior loop the last loop.
@@ -353,18 +353,6 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
         if prior_loop == self.last_loop:
             self._last_loop = loop
 
-    def add_loop_in_front_of_float(self, front_loop: LoopT, start_of_float: LoopT) -> None:
-        """Record that a loop falls in front of the float between two other loops.
-
-        Args:
-            front_loop (Loop): The loop that is positioned in front of the float.
-            start_of_float (Loop): The first loop in the float pair.
-        """
-        end_of_float = start_of_float.next_loop_on_yarn()
-        if end_of_float is not None:
-            self.get_edge(start_of_float, end_of_float).add_loop_in_front_of_float(front_loop)
-            front_loop.add_loop_in_front_of_float(start_of_float, end_of_float)
-
     def remove_loop_relative_to_floats(self, loop: LoopT) -> None:
         """
         Removes the given loop from positions relative to floats along this yarn.
@@ -373,18 +361,6 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
         """
         for _u, _v, float_data in self.edge_iter:
             float_data.remove_loop_relative_to_floats(loop)
-
-    def add_loop_behind_float(self, back_loop: LoopT, start_of_float: LoopT) -> None:
-        """Record that a loop falls in front of the float between two other loops.
-
-        Args:
-            back_loop (Loop): The loop that is positioned behind the float.
-            start_of_float (Loop): The first loop in the float pair.
-        """
-        end_of_float = start_of_float.next_loop_on_yarn()
-        if end_of_float is not None:
-            self.get_edge(start_of_float, end_of_float).add_loop_behind_float(back_loop)
-            back_loop.add_loop_behind_float(start_of_float, end_of_float)
 
     def cut_yarn(self) -> Self:
         """Cut yarn to make it no longer active and create a new yarn instance of the same type.
