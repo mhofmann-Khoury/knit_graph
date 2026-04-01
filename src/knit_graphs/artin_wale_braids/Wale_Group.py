@@ -90,9 +90,7 @@ class Wale_Group(Directed_Loop_Graph[LoopT, Pull_Direction]):
             wale_to_split = wales_to_split.pop()
             split = False
             upper_loops = wale_to_split[1:]
-            for (
-                loop
-            ) in upper_loops:  # skip first loop in each wale as it may be already connected to a discovered decrease.
+            for loop in upper_loops:  # skip first loop in each wale as it may be already connected to a discovered decrease.
                 if len(loop.parent_loops) > 1:  # Focal of a decrease.
                     clean_wale, remaining_wale = wale_to_split.split_wale(loop)
                     if not self.wale_graph.has_node(clean_wale):

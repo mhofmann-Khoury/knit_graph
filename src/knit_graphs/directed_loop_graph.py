@@ -383,12 +383,8 @@ class Stitch_Edge:
 class Float_Edge(Generic[LoopT]):
     """The edge data for float edges between loops on a yarn."""
 
-    front_loops: set[LoopT] = field(
-        default_factory=set
-    )  # The set of loops that sit in front of this float. Defaults to empty set.
-    back_loops: set[LoopT] = field(
-        default_factory=set
-    )  # THe set of loops that sit behind this float. Defaults to the empty set.
+    front_loops: set[LoopT] = field(default_factory=set)  # The set of loops that sit in front of this float. Defaults to empty set.
+    back_loops: set[LoopT] = field(default_factory=set)  # THe set of loops that sit behind this float. Defaults to the empty set.
 
     def loop_in_front_of_float(self, loop: LoopT) -> bool:
         """

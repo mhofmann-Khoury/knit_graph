@@ -7,15 +7,7 @@ creating socket connection issues that can cause browser hangs.
 import os
 from unittest import TestCase
 
-from knit_graphs.basic_knit_graph_generators import (
-    co_loops,
-    jersey_swatch,
-    jersey_tube,
-    kp_rib_swatch,
-    lace_mesh,
-    seed_swatch,
-    twist_cable,
-)
+from knit_graphs.basic_knit_graph_generators import co_loops, jersey_swatch, jersey_tube, kp_rib_swatch, lace_mesh, seed_swatch, twist_cable
 from knit_graphs.Knit_Graph_Visualizer import visualize_knit_graph_safe
 
 

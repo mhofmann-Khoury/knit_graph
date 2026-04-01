@@ -414,9 +414,7 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
     @overload
     def __getitem__(self, item: slice) -> list[LoopT]: ...
 
-    def __getitem__(
-        self, item: int | tuple[LoopT | int, LoopT | int] | slice
-    ) -> LoopT | Float_Edge[LoopT] | list[LoopT]:
+    def __getitem__(self, item: int | tuple[LoopT | int, LoopT | int] | slice) -> LoopT | Float_Edge[LoopT] | list[LoopT]:
         """Get a loop by its ID from this yarn.
 
         Args:

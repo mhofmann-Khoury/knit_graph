@@ -1,13 +1,6 @@
 from unittest import TestCase
 
-from knit_graphs.basic_knit_graph_generators import (
-    jersey_swatch,
-    jersey_tube,
-    kp_rib_swatch,
-    lace_mesh,
-    seed_swatch,
-    twist_cable,
-)
+from knit_graphs.basic_knit_graph_generators import jersey_swatch, jersey_tube, kp_rib_swatch, lace_mesh, seed_swatch, twist_cable
 from knit_graphs.Pull_Direction import Pull_Direction
 
 

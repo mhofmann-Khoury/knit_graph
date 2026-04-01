@@ -71,11 +71,7 @@ class Loop_Braid_Graph(Directed_Loop_Graph[LoopT, Crossing_Direction]):
         if left_loop not in self:
             return set()
         else:
-            return {
-                rl
-                for rl in self.successors(left_loop)
-                if self.get_crossing(left_loop, rl) is not Crossing_Direction.No_Cross
-            }
+            return {rl for rl in self.successors(left_loop) if self.get_crossing(left_loop, rl) is not Crossing_Direction.No_Cross}
 
     def right_crossing_loops(self, right_loop: LoopT) -> set[LoopT]:
         """Get all loops that cross with the given loop when it is on the right side.
@@ -89,8 +85,4 @@ class Loop_Braid_Graph(Directed_Loop_Graph[LoopT, Crossing_Direction]):
         if right_loop not in self:
             return set()
         else:
-            return {
-                l
-                for l in self.predecessors(right_loop)
-                if self.get_crossing(l, right_loop) is not Crossing_Direction.No_Cross
-            }
+            return {l for l in self.predecessors(right_loop) if self.get_crossing(l, right_loop) is not Crossing_Direction.No_Cross}

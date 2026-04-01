@@ -94,10 +94,7 @@ def kp_rib_swatch(width: int, height: int) -> Knit_Graph[Loop]:
     for _ in range(0, height):
         assert yarn.last_loop is not None
         pull_direction = yarn.last_loop.pull_directions[0] if yarn.last_loop.has_parent_loops else Pull_Direction.BtF
-        last_course = [
-            builder.knit(yarn, [parent_loop], pull_direction=pull_direction if i % 2 == 0 else pull_direction.opposite)
-            for i, parent_loop in enumerate(reversed(last_course))
-        ]
+        last_course = [builder.knit(yarn, [parent_loop], pull_direction=pull_direction if i % 2 == 0 else pull_direction.opposite) for i, parent_loop in enumerate(reversed(last_course))]
     return knit_graph
 
 
@@ -118,10 +115,7 @@ def seed_swatch(width: int, height: int) -> Knit_Graph[Loop]:
     for _ in range(0, height):
         assert yarn.last_loop is not None
         pull_direction = yarn.last_loop.pull_directions[0] if yarn.last_loop.has_parent_loops else Pull_Direction.BtF
-        last_course = [
-            builder.knit(yarn, [parent_loop], pull_direction=pull_direction.opposite if i % 2 == 0 else pull_direction)
-            for i, parent_loop in enumerate(reversed(last_course))
-        ]
+        last_course = [builder.knit(yarn, [parent_loop], pull_direction=pull_direction.opposite if i % 2 == 0 else pull_direction) for i, parent_loop in enumerate(reversed(last_course))]
     return knit_graph
 
 
@@ -141,10 +135,7 @@ def lace_mesh(width: int, height: int) -> Knit_Graph[Loop]:
     for _ in range(1, height):
         dec1 = last_course[1::3]
         dec2 = last_course[2::3]
-        decs = [
-            dec_parents if i % 2 == 0 else (dec_parents[1], dec_parents[0])
-            for i, dec_parents in enumerate(zip(reversed(dec1), reversed(dec2), strict=False))
-        ]
+        decs = [dec_parents if i % 2 == 0 else (dec_parents[1], dec_parents[0]) for i, dec_parents in enumerate(zip(reversed(dec1), reversed(dec2), strict=False))]
         knits = last_course[0::3]
         next_course = []
         for i, parent_loop in enumerate(reversed(knits)):
@@ -184,9 +175,7 @@ def twist_cable(width: int, height: int) -> Knit_Graph[Loop]:
         Pull_Direction.BtF,
         Pull_Direction.FtB,
     ]
-    last_course = [
-        builder.knit(yarn, [p], pull_directions[i % 4]) for i, p in enumerate(reversed(knit_graph.get_courses()[0]))
-    ]
+    last_course = [builder.knit(yarn, [p], pull_directions[i % 4]) for i, p in enumerate(reversed(knit_graph.get_courses()[0]))]
     for r in range(1, height, 2):
         crossed_course: list[Loop] = []
         for i, parent_loop in enumerate(last_course):
