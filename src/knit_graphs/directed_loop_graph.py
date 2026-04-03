@@ -434,9 +434,9 @@ class Float_Edge(Generic[LoopT]):
         Args:
             loop (LoopT): The loop to remove.
         """
-        if self.loop_in_front_of_float(loop):
+        if loop in self.front_loops:
             self.front_loops.remove(loop)
-        elif self.loop_behind_float(loop):
+        elif loop in self.back_loops:
             self.back_loops.remove(loop)
 
     def __contains__(self, item: LoopT) -> bool:

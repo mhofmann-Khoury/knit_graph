@@ -76,7 +76,20 @@ exclude = [
 [tool.poetry.dependencies]
 python = ">=3.11,<3.14"
 networkx = ">=3.5"
-plotly = ">=6.3.0"
+
+# =============================================================================
+# OPTIONAL: JUPYTER NOTEBOOK SUPPORT
+# =============================================================================
+[tool.poetry.extras]
+notebook = ["jupyter"]
+
+[tool.poetry.group.notebook]
+optional = true
+
+[tool.poetry.group.notebook.dependencies]
+jupyter = "^1.0.0"
+referencing = "<0.36.0"
+jsonschema = "<4.24.0"
 
 # =============================================================================
 # DEVELOPMENT DEPENDENCIES

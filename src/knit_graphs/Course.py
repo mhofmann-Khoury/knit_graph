@@ -5,10 +5,11 @@ This module contains the Course class which represents a horizontal row of loops
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
-from typing import TYPE_CHECKING, Generic, TypeVar, overload
+from typing import TYPE_CHECKING, TypeVar
 
+from knit_graphs.course_face import Course_Face
 from knit_graphs.Loop import Loop
+from knit_graphs.loop_sequence import Loop_Sequence
 
 if TYPE_CHECKING:
     from knit_graphs.Knit_Graph import Knit_Graph
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
 LoopT = TypeVar("LoopT", bound=Loop)
 
 
-class Course(Sequence[LoopT], Generic[LoopT]):
+class Course(Loop_Sequence[LoopT]):
     """Course object for organizing loops into knitting rows.
 
     A Course represents a horizontal row of loops in a knitting pattern.
@@ -29,10 +30,9 @@ class Course(Sequence[LoopT], Generic[LoopT]):
         Args:
             knit_graph (Knit_Graph): The knit graph that this course belongs to.
         """
+        super().__init__()
         self._course_number: int = course_number
         self._knit_graph: Knit_Graph[LoopT] = knit_graph
-        self._loops_in_order: list[LoopT] = []
-        self._loop_set: set[LoopT] = set()
 
     @property
     def course_number(self) -> int:
@@ -41,22 +41,6 @@ class Course(Sequence[LoopT], Generic[LoopT]):
             int: The course number of the course.
         """
         return self._course_number
-
-    @property
-    def loops_in_order(self) -> list[LoopT]:
-        """
-        Returns:
-            list[Loop]: The list of loops in this course.
-        """
-        return self._loops_in_order
-
-    @property
-    def loop_ids_in_course(self) -> list[int]:
-        """
-        Returns:
-            list[int]: The loop ids in the course in the order the occur in the course.
-        """
-        return [l.loop_id for l in self.loops_in_order]
 
     @property
     def knit_graph(self) -> Knit_Graph[LoopT]:
@@ -76,30 +60,13 @@ class Course(Sequence[LoopT], Generic[LoopT]):
         Raises:
             ValueError: If the loop is a parent to any loops already in the course.
         """
-        for parent_loop in loop.parent_loops:
-            if parent_loop in self:
-                raise ValueError(f"{loop} has parent {parent_loop}, cannot be added to same course")
+        if not self.isdisjoint(loop.parent_loops):
+            raise ValueError(f"{loop} has parent in course, cannot be added to same course")
         self._loop_set.add(loop)
         if index is None:
             self.loops_in_order.append(loop)
         else:
             self.loops_in_order.insert(index, loop)
-
-    def has_increase(self) -> bool:
-        """Check if this course contains any yarn overs that start new wales.
-
-        Returns:
-            bool: True if the course has at least one yarn over (loop with no parent loops) to start new wales.
-        """
-        return any(not loop.has_parent_loops for loop in self)
-
-    def has_decrease(self) -> bool:
-        """Check if this course contains any decrease stitches that merge wales.
-
-        Returns:
-            bool: True if the course has at least one decrease stitch (loop with multiple parent loops) merging two or more wales.
-        """
-        return any(len(loop.parent_loops) > 1 for loop in self)
 
     def in_round_with(self, next_course: Course[LoopT]) -> bool:
         """Check if the next course connects to this course in a circular pattern.
@@ -137,49 +104,18 @@ class Course(Sequence[LoopT], Generic[LoopT]):
             i += 1
         return self[-1] in next_start.parent_loops
 
-    def __contains__(self, loop: object) -> bool:
-        """Check if a loop is contained in this course.
-
-        Args:
-            loop (LoopT): The loop to check for membership in this course.
-
-        Returns:
-            bool: True if the loop is in this course, False otherwise.
+    def get_faces(self) -> list[Course_Face[LoopT]]:
         """
-        return loop in self._loop_set
-
-    @overload
-    def __getitem__(self, index: int) -> LoopT: ...
-
-    @overload
-    def __getitem__(self, index: slice) -> list[LoopT]: ...
-
-    def __getitem__(self, index: int | slice) -> LoopT | list[LoopT]:
-        """Get loop(s) at the specified index or slice.
-
-        Args:
-            index (int | slice): The index or slice to retrieve from the course.
-
         Returns:
-            Loop | list[Loop]: The loop at the specified index, or list of loops for a slice.
+            list[Course_Face[LoopT]]: A list of all faces that make up this course in the order that they occur in the course.
         """
-        return self.loops_in_order[index]
-
-    def __iter__(self) -> Iterator[LoopT]:
-        """Iterate over loops in this course in order.
-
-        Returns:
-            Iterator[Loop]: An iterator over the loops in this course in their natural order.
-        """
-        return iter(self.loops_in_order)
-
-    def __len__(self) -> int:
-        """Get the number of loops in this course.
-
-        Returns:
-            int: The total number of loops in this course.
-        """
-        return len(self.loops_in_order)
+        faces = []
+        loop: LoopT | None = self[0]
+        while loop is not None:
+            face = Course_Face(loop, self)
+            faces.append(face)
+            loop = self.next_loop_in_sequence(face.last_index_in_course)
+        return faces
 
     def __str__(self) -> str:
         """Get string representation of this course.

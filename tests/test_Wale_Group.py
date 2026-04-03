@@ -22,7 +22,7 @@ class TestWale_Group(TestCase):
         wale_groups = knit_graph.get_wale_groups()
         self.assertEqual(len(wale_groups), width * 2)
         for wg in wale_groups:
-            self.assertEqual(len(wg), height + 1)
+            self.assertEqual(len(wg), height)
 
     def test_mesh(self):
         width = 7

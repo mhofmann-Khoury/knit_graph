@@ -186,16 +186,13 @@ class Knit_Graph(Directed_Loop_Graph[LoopT, Pull_Direction]):
 
         Returns:
             list[Course[LoopT]: A list of courses representing horizontal rows of loops.
-            The first course contains the initial set of loops. A course change occurs when a loop has a parent loop in the previous course.
         """
         courses = []
         course = Course(0, self)
         for loop in self.sorted_loops:
-            for parent in loop.parent_loops:
-                if parent in course:  # start a new course
-                    courses.append(course)
-                    course = Course(course.course_number + 1, self)
-                    break
+            if not course.isdisjoint(loop.parent_loops):  # start a new course
+                courses.append(course)
+                course = Course(course.course_number + 1, self)
             course.add_loop(loop)
         courses.append(course)
         return courses

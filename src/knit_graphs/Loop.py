@@ -26,8 +26,6 @@ class Loop:
     Attributes:
         yarn (Yarn[Self]): The yarn that creates and holds this loop.
         parent_loops (list[Loop]): The list of parent loops that this loop is connected to through stitch edges.
-        front_floats (dict[Loop, set[Loop]]): Mapping of loops involved in floats in front of this loop to the paired loops in the float.
-        back_floats (dict[Loop, set[Loop]]): Mapping of loops involved in floats behind this loop to the paired loops in the float.
     """
 
     def __init__(self, yarn: Yarn[Self], loop_id: int | None = None, **_kwargs: Any) -> None:
@@ -45,8 +43,6 @@ class Loop:
             raise ValueError(f"Loop identifier must be non-negative but got {loop_id}")
         self._loop_id: int = loop_id
         self.parent_loops: list[Self] = []
-        self.front_floats: dict[Self, set[Self]] = {}
-        self.back_floats: dict[Self, set[Self]] = {}
 
     @property
     def loop_id(self) -> int:
@@ -119,8 +115,7 @@ class Loop:
         Returns:
             Float_Edge | None: The float-edge connecting this loop to the next loop on its yarn or None if it is at the end of the yarn.
         """
-        next_loop = self.next_loop_on_yarn
-        return self.yarn.get_edge(self, next_loop) if next_loop is not None else None
+        return self.yarn.following_float(self)
 
     @property
     def ended_float(self) -> Float_Edge[Self] | None:
@@ -128,12 +123,44 @@ class Loop:
         Returns:
             Float_Edge | None: The float-edge connecting the prior loop on the yarn to this loop or None if it is at the beginning of the yarn.
         """
-        prior_loop = self.prior_loop_on_yarn
-        return self.yarn.get_edge(prior_loop, self) if prior_loop is not None else None
+        return self.yarn.proceeding_float(self)
+
+    @property
+    def loops_in_front_of_floats(self) -> set[Self]:
+        """
+        Returns:
+            set[Self]: The set of all loops in front of a float that involves this loop.
+        """
+        fronts = set()
+        if self.started_float is not None:
+            fronts.update(self.started_float.front_loops)
+        if self.ended_float is not None:
+            fronts.update(self.ended_float.front_loops)
+        return fronts
+
+    @property
+    def loops_behind_floats(self) -> set[Self]:
+        """
+        Returns:
+            set[Self]: The set of all loops behind a float that involves this loop.
+        """
+        backs = set()
+        if self.started_float is not None:
+            backs.update(self.started_float.back_loops)
+        if self.ended_float is not None:
+            backs.update(self.ended_float.back_loops)
+        return backs
+
+    @property
+    def cross_floats(self) -> set[Self]:
+        """
+        Returns:
+            set[Self]: The set of all loops that cross a float that involves this loop.
+        """
+        return self.loops_in_front_of_floats.union(self.loops_behind_floats)
 
     def is_in_front_of_float(self, u: Self, v: Self) -> bool:
-        """Check if this loop is positioned in front of the float between loops u and v.
-
+        """
         Args:
             u (Loop): The first loop in the float pair.
             v (Loop): The second loop in the float pair.
@@ -141,11 +168,12 @@ class Loop:
         Returns:
             bool: True if the float between u and v passes behind this loop, False otherwise.
         """
-        return u in self.back_floats and v in self.back_floats and v in self.back_floats[u]
+        if not u.yarn.has_float(u, v):
+            return False
+        return u.yarn.get_edge(u, v).loop_in_front_of_float(self)
 
     def is_behind_float(self, u: Self, v: Self) -> bool:
-        """Check if this loop is positioned behind the float between loops u and v.
-
+        """
         Args:
             u (Loop): The first loop in the float pair.
             v (Loop): The second loop in the float pair.
@@ -153,7 +181,9 @@ class Loop:
         Returns:
             bool: True if the float between u and v passes in front of this loop, False otherwise.
         """
-        return u in self.front_floats and v in self.front_floats and v in self.front_floats[u]
+        if not u.yarn.has_float(u, v):
+            return False
+        return u.yarn.get_edge(u, v).loop_behind_float(self)
 
     @staticmethod
     def majority_pull_direction(loops: Sequence[Loop]) -> Pull_Direction:
@@ -173,60 +203,17 @@ class Loop:
             purls = len(loops) - knits
             return Pull_Direction.BtF if knits > purls else Pull_Direction.FtB
 
-    def put_in_front_of_float(self, u: Self, v: Self) -> None:
-        """Set this loop to be in front of the float between loops u and v.
-
-        This method establishes that this loop passes in front of a floating yarn segment between two other loops.
-
-        Args:
-            u (Loop): The first loop in the float pair.
-            v (Loop): The second loop in the float pair.
-
-        Raises:
-            ValueError: If u and v are not on the same yarn.
-        """
-        if u.yarn != v.yarn:
-            raise ValueError("Loops of a float must share a yarn.")
-        if u not in self.back_floats:
-            self.back_floats[u] = set()
-        if v not in self.back_floats:
-            self.back_floats[v] = set()
-        self.back_floats[u].add(v)
-        self.back_floats[v].add(u)
-
-    def put_behind_float(self, u: Self, v: Self) -> None:
-        """Set this loop to be behind the float between loops u and v.
-
-        This method establishes that this loop passes behind a floating yarn segment between two other loops.
-
-        Args:
-            u (Loop): The first loop in the float pair.
-            v (Loop): The second loop in the float pair.
-
-        Raises:
-            ValueError: If u and v are not on the same yarn.
-        """
-        if u.yarn != v.yarn:
-            raise ValueError("Loops of a float must share a yarn.")
-        if u not in self.front_floats:
-            self.front_floats[u] = set()
-        if v not in self.front_floats:
-            self.front_floats[v] = set()
-        self.front_floats[u].add(v)
-        self.front_floats[v].add(u)
-
     def add_loop_behind_started_float(self, back_loop: Self) -> None:
         """
         Places the given loop behind the float started by this loop. If this loop is at the end of the yarn, nothing happens.
+
         Args:
             back_loop (Loop): The loop to place the loop behind the float started by this loop.
         """
+
         started_float = self.started_float
         if started_float is not None:
             started_float.add_loop_behind_float(back_loop)
-            next_loop_in_float = self.next_loop_on_yarn
-            assert next_loop_in_float is not None
-            back_loop.put_behind_float(self, next_loop_in_float)
 
     def add_loop_in_front_of_started_float(self, front_loop: Self) -> None:
         """
@@ -237,9 +224,6 @@ class Loop:
         started_float = self.started_float
         if started_float is not None:
             started_float.add_loop_in_front_of_float(front_loop)
-            next_loop_in_float = self.next_loop_on_yarn
-            assert next_loop_in_float is not None
-            front_loop.put_in_front_of_float(self, next_loop_in_float)
 
     def add_parent_loop(self, parent: Self, stack_position: int | None = None) -> None:
         """Add a parent loop to this loop's parent stack.

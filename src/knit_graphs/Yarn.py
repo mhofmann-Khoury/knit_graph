@@ -200,6 +200,20 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
         successors = self.successors(loop)
         return successors.pop() if len(successors) > 0 else None
 
+    def following_float(self, loop: LoopT) -> Float_Edge[LoopT] | None:
+        """
+        Args:
+            loop (LoopT): The loop at the start of the desired float.
+
+        Returns:
+            Float_Edge[LoopT] | None: The float-edge between the given loop and the next loop on the yarn or None if it's the last loop.
+        """
+        following_loop = self.next_loop(loop)
+        if following_loop is None:
+            return None
+        else:
+            return self.get_edge(loop, following_loop)
+
     def prior_loop(self, loop: LoopT) -> LoopT | None:
         """
         Args:
@@ -218,6 +232,20 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
             return predecessors.pop()
         else:
             return None
+
+    def proceeding_float(self, loop: LoopT) -> Float_Edge[LoopT] | None:
+        """
+        Args:
+            loop (LoopT): The loop at the end of the desired float.
+
+        Returns:
+            Float_Edge[LoopT] | None: The float-edge from the loop prior to the given loop and to the next loop or None if it's the first loop.
+        """
+        prior_loop = self.prior_loop(loop)
+        if prior_loop is None:
+            return None
+        else:
+            return self.get_edge(prior_loop, loop)
 
     def has_float(self, u: LoopT, v: LoopT) -> bool:
         """Check if there is a float edge between two loops on this yarn.
@@ -282,6 +310,7 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
         Remove the given loop from the yarn.
         Reconnects any neighboring loops to form a new float with the positioned in-front-of or behind the original floats positioned accordingly.
         Resets the first_loop and last_loop properties if the removed loop was the tail of the yarn.
+
         Args:
             loop (LoopT): The loop to remove from the yarn.
 
@@ -295,20 +324,13 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
         prior_loop = self.prior_loop(loop)
         next_loop = self.next_loop(loop)
         if prior_loop is not None and next_loop is not None:  # Loop is between two floats to be merged.
-            front_of_float_loops = self.get_loops_in_front_of_float(prior_loop, loop)
-            front_of_float_loops.update(self.get_loops_in_front_of_float(loop, next_loop))
-            back_of_float_loops = self.get_loops_behind_float(prior_loop, loop)
-            back_of_float_loops.update(self.get_loops_behind_float(loop, next_loop))
+            following_float = self.following_float(loop)
+            proceeding_float = self.proceeding_float(loop)
+            assert following_float is not None and proceeding_float is not None
+            front_loops = following_float.front_loops.union(proceeding_float.front_loops)
+            back_loops = following_float.back_loops.union(proceeding_float.back_loops)
             super().remove_loop(loop)
-            self.add_edge(
-                prior_loop,
-                next_loop,
-                Float_Edge[LoopT](front_loops=front_of_float_loops, back_loops=back_of_float_loops),
-            )
-            for front_loop in front_of_float_loops:
-                front_loop.put_in_front_of_float(prior_loop, next_loop)
-            for back_loop in back_of_float_loops:
-                back_loop.put_behind_float(prior_loop, next_loop)
+            self.add_edge(prior_loop, next_loop, Float_Edge[LoopT](front_loops, back_loops))
         else:
             super().remove_loop(loop)
             if next_loop is None:  # This was the last loop, make the prior loop the last loop.
@@ -356,6 +378,7 @@ class Yarn(Directed_Loop_Graph[LoopT, Float_Edge[LoopT]]):
     def remove_loop_relative_to_floats(self, loop: LoopT) -> None:
         """
         Removes the given loop from positions relative to floats along this yarn.
+
         Args:
             loop (LoopT): The loop to remove from positions relative to floats on this yarn.
         """

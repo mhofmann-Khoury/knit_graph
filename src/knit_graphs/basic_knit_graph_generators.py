@@ -66,14 +66,17 @@ def jersey_tube(tube_width: int, height: int) -> Knit_Graph[Loop]:
     yarn = builder.add_yarn()
     front_of_tube = [builder.tuck(yarn) for _ in range(0, tube_width)]
     back_of_tube = [builder.tuck(yarn) for _ in reversed(front_of_tube)]
-    for _ in range(0, height):
+    for _ in range(1, height):
         for fl, bl in zip(front_of_tube[:-1], reversed(back_of_tube[1:]), strict=False):
             builder.position_float(fl, loops_behind_float=[bl])
         for fl, bl in zip(reversed(front_of_tube[1:]), back_of_tube[:-1], strict=False):
             builder.position_float(bl, loops_in_front_of_float=[fl])
         front_of_tube = [builder.knit(yarn, [fl], Pull_Direction.BtF) for fl in front_of_tube]
         back_of_tube = [builder.knit(yarn, [bl], Pull_Direction.FtB) for bl in back_of_tube]
-
+    for fl, bl in zip(front_of_tube[:-1], reversed(back_of_tube[1:]), strict=False):
+        builder.position_float(fl, loops_behind_float=[bl])
+    for fl, bl in zip(reversed(front_of_tube[1:]), back_of_tube[:-1], strict=False):
+        builder.position_float(bl, loops_in_front_of_float=[fl])
     return builder.knit_graph
 
 

@@ -39,7 +39,7 @@ class TestKnit_Graph(TestCase):
         height = 4
         knit_graph = jersey_tube(width, height)
         courses = knit_graph.get_courses()
-        assert len(courses) == height + 1, f"Expected tube courses to be {height + 1} but got {len(courses)}"
+        assert len(courses) == height, f"Expected tube courses to be {height} but got {len(courses)}"
         for prior_course, next_course in zip(courses[:-1], courses[1:], strict=False):
             assert prior_course.in_round_with(next_course), f"{prior_course} not in round with {next_course}"
 
@@ -104,7 +104,7 @@ class TestKnit_Graph(TestCase):
         self.assertNotIn(loop_5, loop_5.yarn)
 
     def test_delete_loop_floats(self):
-        knit_graph = jersey_tube(3, 4)
+        knit_graph = jersey_tube(3, 5)
         self.assertEqual(len(knit_graph), 30)
         loop_10 = knit_graph[10]
         yarn = loop_10.yarn

@@ -1,18 +1,18 @@
-"""Module used to visualize a Knit graph with the plotly graph object library.
+"""Module used to visualize a Knit graph as an SVG file.
 
-This module provides comprehensive visualization capabilities for knit graphs using Plotly.
-It handles the positioning of loops, rendering of yarn paths, stitch edges, and cable crossings to create interactive 2D visualizations of knitted structures.
+This module provides comprehensive visualization capabilities for knit graphs by
+rendering them as SVG. It handles the positioning of loops, rendering of yarn paths,
+stitch edges, and cable crossings to create 2D visualizations of knitted structures.
 """
 
 from __future__ import annotations
 
-import os
-import sys
-from typing import Generic, TypedDict, TypeVar, cast
+import xml.etree.ElementTree as ET
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any, Generic, TypedDict, TypeVar, cast
 
-import plotly.io as pio
 from networkx import DiGraph
-from plotly.graph_objs import Figure, Layout, Scatter
 
 from knit_graphs.artin_wale_braids.Crossing_Direction import Crossing_Direction
 from knit_graphs.Course import Course
@@ -24,7 +24,7 @@ LoopT = TypeVar("LoopT", bound=Loop)
 
 
 class TraceData(TypedDict, Generic[LoopT]):
-    """Typing specification for the dictionaries passes as traces to Plotly"""
+    """Typing specification for stitch edge data."""
 
     x: list[float | None]
     y: list[float | None]
@@ -32,29 +32,12 @@ class TraceData(TypedDict, Generic[LoopT]):
     is_start: list[bool]
 
 
-def configure_plotly_environment() -> None:
-    """Auto-configure Plotly based on environment detection to avoid socket issues."""
-    # Check if we're in a testing environment
-    if "pytest" in sys.modules or "unittest" in sys.modules or os.environ.get("TESTING") or os.environ.get("CI"):
-        # For testing, don't set a default renderer - we'll handle this with show_figure=False
-        pass
-    elif "ipykernel" in sys.modules or "jupyter" in sys.modules:
-        # Jupyter environment - use notebook renderer
-        pio.renderers.default = "notebook"
-    else:
-        # Development environment - use browser but with timeout to prevent hanging
-        pio.renderers.default = "browser"
-
-
-# Configure environment on import
-configure_plotly_environment()
-
-
 class Knit_Graph_Visualizer(Generic[LoopT]):
-    """A class used to visualize a knit graph using the plotly graph objects library.
+    """A class used to visualize a knit graph by rendering it as an SVG file.
 
-    This class converts knit graph data structures into interactive 2D visualizations by calculating loop positions,
-    rendering yarn paths, and displaying stitch relationships with appropriate styling for different stitch types and cable crossings.
+    This class converts knit graph data structures into SVG visualizations by calculating
+    loop positions, rendering yarn paths as Bézier curves, and displaying stitch
+    relationships with appropriate styling for different stitch types and cable crossings.
 
     Attributes:
         knit_graph (Knit_Graph): The knit graph to visualize.
@@ -79,15 +62,15 @@ class Knit_Graph_Visualizer(Generic[LoopT]):
         balance_by_base_width: bool = False,
         left_zero_align: bool = True,
     ):
-        """Initialize the knit graph visualizer with specified configuration options.
+        """Initialize the knit graph SVG visualizer with specified configuration options.
 
         Args:
-            knit_graph (Knit_Graph): The knit graph to be visualized.
-            first_course_index (int, optional): The index of the first course to include in the visualization. Defaults to 0.
-            top_course_index (int | None, optional): The index of the last course to include in the visualization. If None, includes all courses up to the top.
-            start_on_left (bool, optional): Whether to position the first loop on the left side of the visualization. Defaults to True.
-            balance_by_base_width (bool, optional): Whether to scale all course widths to match the base course width. Defaults to False.
-            left_zero_align (bool, optional): Whether to align the leftmost loop of each course to x=0. Defaults to True.
+            knit_graph: The knit graph to be visualized.
+            first_course_index: The index of the first course to include. Defaults to 0.
+            top_course_index: The index of the last course to include. If None, includes all.
+            start_on_left: Whether to position the first loop on the left side. Defaults to True.
+            balance_by_base_width: Whether to scale all course widths to match the base. Defaults to False.
+            left_zero_align: Whether to align the leftmost loop of each course to x=0. Defaults to True.
         """
         self.left_zero_align: bool = left_zero_align
         self.balance_by_base_width: bool = balance_by_base_width
@@ -98,239 +81,538 @@ class Knit_Graph_Visualizer(Generic[LoopT]):
             top_course_index = len(self.courses)
         self.top_course_index: int = top_course_index
         self.first_course_index: int = first_course_index
-        self.base_width: float = float(len(self.courses[first_course_index]))  # Updates when creating base course.
-        self.base_left: float = 0.0  # Updates when creating the base course.
+        self.base_width: float = float(len(self.courses[first_course_index]))
+        self.base_left: float = 0.0
         self.loops_to_course: dict[LoopT, Course] = {}
         for course in self.courses:
             self.loops_to_course.update({loop: course for loop in course})
         self.data_graph: DiGraph = DiGraph()
         self._loops_need_placement: set[LoopT] = set()
-        self._loop_markers: list[Scatter] = []
-        self._yarn_traces: list[Scatter] = []
-        self._top_knit_trace_data: TraceData = {
-            "x": [],
-            "y": [],
-            "edge": [],
-            "is_start": [],
-        }
-        self._bot_knit_trace_data: TraceData = {
-            "x": [],
-            "y": [],
-            "edge": [],
-            "is_start": [],
-        }
-        self._top_purl_trace_data: TraceData = {
-            "x": [],
-            "y": [],
-            "edge": [],
-            "is_start": [],
-        }
-        self._bot_purl_trace_data: TraceData = {
-            "x": [],
-            "y": [],
-            "edge": [],
-            "is_start": [],
-        }
-        self._knit_trace_data: TraceData = {
-            "x": [],
-            "y": [],
-            "edge": [],
-            "is_start": [],
-        }
-        self._purl_trace_data: TraceData = {
-            "x": [],
-            "y": [],
-            "edge": [],
-            "is_start": [],
-        }
-        # Form the visualization.
+
+        # Stitch trace data categorized by pull direction and cable crossing.
+        self._top_knit_trace_data: TraceData = {"x": [], "y": [], "edge": [], "is_start": []}
+        self._bot_knit_trace_data: TraceData = {"x": [], "y": [], "edge": [], "is_start": []}
+        self._top_purl_trace_data: TraceData = {"x": [], "y": [], "edge": [], "is_start": []}
+        self._bot_purl_trace_data: TraceData = {"x": [], "y": [], "edge": [], "is_start": []}
+        self._knit_trace_data: TraceData = {"x": [], "y": [], "edge": [], "is_start": []}
+        self._purl_trace_data: TraceData = {"x": [], "y": [], "edge": [], "is_start": []}
+
+        # Calculate all positions.
         self._position_loops()
-        self._set_loop_markers()
-        self._set_yarn_traces()
         self._add_stitch_edges()
 
-    def make_figure(self, graph_title: str = "Knit Graph") -> Figure:
-        """Generate the interactive figure to visualize this knit graph.
+    # ── SVG rendering ────────────────────────────────────────────────────
+
+    def make_svg(
+        self,
+        graph_title: str = "Knit Graph",
+        scale: float = 80.0,
+        loop_radius: float = 0.15,
+        padding: float = 0.6,
+        knit_color: str = "blue",
+        purl_color: str = "red",
+        font_size: float = 0.14,
+        loop_border_width: float = 0.02,
+        yarn_line_width: float = 0.02,
+        background_color: str | None = None,
+    ) -> str:
+        """Generate an SVG string visualizing this knit graph.
 
         Args:
-            graph_title (str, optional): The title to display on the figure. Defaults to "Knit Graph".
+            graph_title: Title text rendered at the top of the SVG.
+            scale: Pixels per graph-coordinate unit. Controls overall image size.
+            loop_radius: Radius of loop circles in graph-coordinate units.
+            padding: Extra space around the content in graph-coordinate units.
+            knit_color: Stroke color for knit-stitch edges.
+            purl_color: Stroke color for purl-stitch edges.
+            font_size: Font size for loop id labels in graph-coordinate units.
+            loop_border_width: Stroke width of loop circle borders in graph-coordinate units.
+            yarn_line_width: Stroke width of yarn traces in graph-coordinate units.
+            background_color: Optional background rectangle color. None for transparent.
 
         Returns:
-            Figure: The plotly figure object.
+            The SVG document as a string.
         """
-        go_layout = Layout(
-            title=graph_title,
-            showlegend=True,
-            hovermode="closest",
-            margin={"b": 20, "l": 5, "r": 5, "t": 40},
+        if len(self.data_graph.nodes) == 0:
+            return self._empty_svg(graph_title, scale)
+
+        # Determine bounding box in graph coordinates.
+        all_x = [self._get_x_of_loop(n) for n in self.data_graph.nodes]
+        all_y = [self._get_y_of_loop(n) for n in self.data_graph.nodes]
+        min_x, max_x = min(all_x), max(all_x)
+        min_y, max_y = min(all_y), max(all_y)
+
+        # We flip y so that course 0 is at the bottom visually.
+        # In SVG, y increases downward, but we want higher courses higher on screen.
+        # Transform: svg_x = (x - min_x + padding) * scale
+        #            svg_y = (max_y - y + padding) * scale  (flipped)
+        title_height = 1.0  # graph-coordinate units reserved for the title
+        content_w = max_x - min_x + 2 * padding
+        content_h = max_y - min_y + 2 * padding + title_height
+        svg_w = content_w * scale
+        svg_h = content_h * scale
+
+        def tx(x: float) -> float:
+            return (x - min_x + padding) * scale
+
+        def ty(y: float) -> float:
+            return (max_y - y + padding + title_height) * scale
+
+        root = ET.Element(
+            "svg",
+            xmlns="http://www.w3.org/2000/svg",
+            width=str(round(svg_w, 2)),
+            height=str(round(svg_h, 2)),
+            viewBox=f"0 0 {round(svg_w, 2)} {round(svg_h, 2)}",
         )
-        figure_data = [
-            self._top_knit_trace(),
-            self._top_purl_trace(),
-            self._no_cross_knit_trace(),
-            self._no_cross_purl_trace(),
-            self._bot_knit_trace(),
-            self._bot_purl_trace(),
+
+        # Optional background.
+        if background_color is not None:
+            ET.SubElement(
+                root,
+                "rect",
+                x="0",
+                y="0",
+                width=str(round(svg_w, 2)),
+                height=str(round(svg_h, 2)),
+                fill=background_color,
+            )
+
+        # Title.
+        title_el = ET.SubElement(
+            root,
+            "text",
+            x=str(round(svg_w / 2, 2)),
+            y=str(round(title_height * scale * 0.6, 2)),
+        )
+        title_el.set("text-anchor", "middle")
+        title_el.set("font-family", "sans-serif")
+        title_el.set("font-size", str(round(0.3 * scale, 2)))
+        title_el.set("fill", "black")
+        title_el.text = graph_title
+
+        # ── Layer 1: Yarn traces (behind everything) ────────────────────
+        yarn_group = ET.SubElement(root, "g", id="yarn-traces")
+        for yarn in self.knit_graph.yarns:
+            points: list[tuple[float, float]] = []
+            for loop in yarn:
+                if self._loop_has_position(loop):
+                    points.append((tx(self._get_x_of_loop(loop)), ty(self._get_y_of_loop(loop))))
+            if len(points) < 2:
+                continue
+            path_d = self._bezier_path(points)
+            ET.SubElement(
+                yarn_group,
+                "path",
+                d=path_d,
+                fill="none",
+                stroke=yarn.properties.color,
+            ).set("stroke-width", str(round(yarn_line_width * scale, 2)))
+
+        # ── Layer 2: Stitch edges ────────────────────────────────────────
+        stitch_group = ET.SubElement(root, "g", id="stitch-edges")
+        stitch_configs: list[tuple[TraceData, str, float, float]] = [
+            # (trace_data, color, width_multiplier, opacity)
+            # Bottom-of-cable (drawn first so top-of-cable overlaps)
+            (self._bot_knit_trace_data, knit_color, 0.04, 0.5),
+            (self._bot_purl_trace_data, purl_color, 0.04, 0.5),
+            # No-cross
+            (self._knit_trace_data, knit_color, 0.05, 0.8),
+            (self._purl_trace_data, purl_color, 0.05, 0.8),
+            # Top-of-cable (drawn last, on top)
+            (self._top_knit_trace_data, knit_color, 0.06, 1.0),
+            (self._top_purl_trace_data, purl_color, 0.06, 1.0),
         ]
-        figure_data.extend(self._yarn_traces)
-        figure_data.extend(self._loop_markers)
-        fig = Figure(data=figure_data, layout=go_layout)
-        return fig
+        for trace_data, color, width_mult, opacity in stitch_configs:
+            self._render_stitch_trace_to_svg(
+                stitch_group,
+                trace_data,
+                color,
+                width_mult * scale,
+                opacity,
+                tx,
+                ty,
+            )
 
-    def show_figure(self, graph_title: str = "Knit Graph", renderer: str | None = None) -> None:
-        """Generate and display the interactive figure to visualize this knit graph.
+        # ── Layer 3: Loop markers (on top) ───────────────────────────────
+        loop_group = ET.SubElement(root, "g", id="loop-markers")
+        r_px = loop_radius * scale
+        border_px = loop_border_width * scale
+        fs_px = font_size * scale
+        for yarn in self.knit_graph.yarns:
+            for loop in yarn:
+                if not self._loop_has_position(loop):
+                    continue
+                cx = round(tx(self._get_x_of_loop(loop)), 2)
+                cy = round(ty(self._get_y_of_loop(loop)), 2)
+                ET.SubElement(
+                    loop_group,
+                    "circle",
+                    cx=str(cx),
+                    cy=str(cy),
+                    r=str(round(r_px, 2)),
+                    fill=yarn.properties.color,
+                    stroke="black",
+                ).set("stroke-width", str(round(border_px, 2)))
+                label = ET.SubElement(
+                    loop_group,
+                    "text",
+                    x=str(cx),
+                    y=str(round(cy + fs_px * 0.35, 2)),
+                )
+                label.set("text-anchor", "middle")
+                label.set("font-family", "sans-serif")
+                label.set("font-size", str(round(fs_px, 2)))
+                label.set("fill", "white")
+                label.text = str(loop.loop_id)
+
+        ET.indent(root, space="  ")
+        return '<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(root, encoding="unicode")
+
+    def save_svg(
+        self,
+        filepath: str | Path = "knit_graph.svg",
+        **kwargs: Any,
+    ) -> Path:
+        """Generate and save the SVG visualization to a file.
 
         Args:
-            graph_title (str, optional): The title to display on the figure. Defaults to "Knit Graph".
-            renderer (str, optional): Plotly renderer to use. If None, uses the default configured renderer.
-        """
-        fig = self.make_figure(graph_title)
-
-        # Configure display to minimize resource usage
-        config = {
-            "displayModeBar": False,  # Hide toolbar to reduce resource usage
-            "displaylogo": False,  # Hide plotly logo
-            "staticPlot": False,  # Keep interactive
-            "scrollZoom": False,  # Allow zoom
-            "doubleClick": "reset+autosize",  # Double-click behavior
-        }
-
-        try:
-            if renderer:
-                fig.show(renderer=renderer, config=config)
-            else:
-                fig.show(config=config)
-        except Exception as e:
-            print(f"Warning: Could not display figure: {e}")
-            print("Figure created successfully but display failed. Consider using show_figure=False and accessing the returned Figure object directly.")
-
-    def _no_cross_knit_trace(self, line_width: float = 4.0, knit_color: str = "blue") -> Scatter:
-        """Create a scatter trace for knit stitches not involved in cable crossings.
-
-        Args:
-            line_width (float, optional): The width of the lines representing the stitch edges. Defaults to 4.0.
-            knit_color (str, optional): The color of knit stitches in the visualization. Defaults to 'blue'.
+            filepath: The path to write the SVG file. Defaults to "knit_graph.svg".
+            **kwargs: Additional keyword arguments forwarded to :meth:`make_svg`.
 
         Returns:
-            Scatter: The plotly scatter object used to visualize knit stitches not involved in cables.
+            The resolved Path where the file was written.
         """
-        return self._stitch_trace(self._knit_trace_data, "Knit Stitches", knit_color, line_width, opacity=0.8)
+        path = Path(filepath)
+        svg_content = self.make_svg(**kwargs)
+        path.write_text(svg_content, encoding="utf-8")
+        return path.resolve()
 
-    def _top_knit_trace(self, line_width: float = 5.0, knit_color: str = "blue") -> Scatter:
-        """Create a scatter trace for knit stitches that cross over other stitches in cables.
-
-        Args:
-            line_width (float, optional): The width of the lines representing the stitch edges. Defaults to 5.0.
-            knit_color (str, optional): The color of knit stitches in the visualization. Defaults to 'blue'.
-
-        Returns:
-            Scatter: The plotly scatter object used to visualize knit stitches on top of cable crossings.
-        """
-        return self._stitch_trace(
-            self._top_knit_trace_data,
-            "Knit Stitches on Top of Cable",
-            knit_color,
-            line_width,
-            opacity=1.0,
-        )
-
-    def _bot_knit_trace(self, line_width: float = 3.0, knit_color: str = "blue") -> Scatter:
-        """Create a scatter trace for knit stitches that cross under other stitches in cables.
-
-        Args:
-            line_width (float, optional): The width of the lines representing the stitch edges. Defaults to 3.0.
-            knit_color (str, optional): The color of knit stitches in the visualization. Defaults to 'blue'.
-
-        Returns:
-            Scatter: The plotly scatter object used to visualize knit stitches below cable crossings.
-        """
-        return self._stitch_trace(
-            self._bot_knit_trace_data,
-            "Knit Stitches Below Cable",
-            knit_color,
-            line_width,
-            opacity=0.5,
-        )
-
-    def _no_cross_purl_trace(self, line_width: float = 4.0, purl_color: str = "red") -> Scatter:
-        """Create a scatter trace for purl stitches not involved in cable crossings.
-
-        Args:
-            line_width (float, optional): The width of the lines representing the stitch edges. Defaults to 4.0.
-            purl_color (str, optional): The color of purl stitches in the visualization. Defaults to 'red'.
-
-        Returns:
-            Scatter: The plotly scatter object used to visualize purl stitches not involved in cables.
-        """
-        return self._stitch_trace(self._purl_trace_data, "Purl Stitches", purl_color, line_width, opacity=0.8)
-
-    def _top_purl_trace(self, line_width: float = 5.0, purl_color: str = "red") -> Scatter:
-        """Create a scatter trace for purl stitches that cross over other stitches in cables.
-
-        Args:
-            line_width (float, optional): The width of the lines representing the stitch edges. Defaults to 5.0.
-            purl_color (str, optional): The color of purl stitches in the visualization. Defaults to 'red'.
-
-        Returns:
-            Scatter: The plotly scatter object used to visualize purl stitches on top of cable crossings.
-        """
-        return self._stitch_trace(
-            self._top_purl_trace_data,
-            "Purl Stitches on Top of Cable",
-            purl_color,
-            line_width,
-            opacity=1.0,
-        )
-
-    def _bot_purl_trace(self, line_width: float = 3.0, purl_color: str = "red") -> Scatter:
-        """Create a scatter trace for purl stitches that cross under other stitches in cables.
-
-        Args:
-            line_width (float, optional): The width of the lines representing the stitch edges. Defaults to 3.0.
-            purl_color (str, optional): The color of purl stitches in the visualization. Defaults to 'red'.
-
-        Returns:
-            Scatter: The plotly scatter object used to visualize purl stitches below cable crossings.
-        """
-        return self._stitch_trace(
-            self._bot_purl_trace_data,
-            "Purl Stitches Below Cable",
-            purl_color,
-            line_width,
-            opacity=0.5,
-        )
+    # ── SVG helpers ──────────────────────────────────────────────────────
 
     @staticmethod
-    def _stitch_trace(
-        trace_data: TraceData,
-        trace_name: str,
-        trace_color: str,
-        line_width: float,
-        opacity: float,
-    ) -> Scatter:
-        """Create a generic scatter trace for stitch visualization with specified styling.
+    def _empty_svg(title: str, scale: float) -> str:
+        """Return a minimal SVG when there are no loops to render."""
+        w = 4 * scale
+        h = 2 * scale
+        root = ET.Element(
+            "svg",
+            xmlns="http://www.w3.org/2000/svg",
+            width=str(round(w, 2)),
+            height=str(round(h, 2)),
+            viewBox=f"0 0 {round(w, 2)} {round(h, 2)}",
+        )
+        t = ET.SubElement(root, "text", x=str(round(w / 2, 2)), y=str(round(h / 2, 2)))
+        t.set("text-anchor", "middle")
+        t.set("font-family", "sans-serif")
+        t.set("font-size", str(round(0.3 * scale, 2)))
+        t.text = f"{title} (empty)"
+        return '<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(root, encoding="unicode")
+
+    @staticmethod
+    def _bezier_path(points: list[tuple[float, float]]) -> str:
+        """Build an SVG cubic Bézier path string through a sequence of points.
+
+        Uses Catmull-Rom-to-Bézier conversion so the curve passes through every
+        point while staying smooth.
 
         Args:
-            trace_data (dict[str, list[float | None] | list[tuple[Loop, Loop] | list[bool]]]): The trace data containing x, y coordinates and edge information to be plotted.
-            trace_name (str): The name of the trace to show in the figure legend.
-            trace_color (str): The color of the trace lines.
-            line_width (float): The width of lines representing the stitch edges.
-            opacity (float): The opacity of the trace lines (0.0 to 1.0).
+            points: Ordered list of (x, y) coordinates.
 
         Returns:
-            Scatter: The plotly scatter object configured to visualize the given stitch traces.
+            An SVG path ``d`` attribute string.
         """
-        return Scatter(
-            name=trace_name,
-            x=trace_data["x"],
-            y=trace_data["y"],
-            line={"width": line_width, "color": trace_color, "dash": "solid"},
-            opacity=opacity,
-            mode="lines",
-        )
+        if len(points) == 0:
+            return ""
+        if len(points) == 1:
+            return f"M {round(points[0][0], 2)} {round(points[0][1], 2)}"
+        if len(points) == 2:
+            return f"M {round(points[0][0], 2)} {round(points[0][1], 2)} " f"L {round(points[1][0], 2)} {round(points[1][1], 2)}"
+
+        # Catmull-Rom → cubic Bézier, tension factor 1/6.
+        d_parts: list[str] = [f"M {round(points[0][0], 2)} {round(points[0][1], 2)}"]
+        n = len(points)
+        for i in range(n - 1):
+            p0 = points[max(i - 1, 0)]
+            p1 = points[i]
+            p2 = points[min(i + 1, n - 1)]
+            p3 = points[min(i + 2, n - 1)]
+
+            # Control point 1: p1 + (p2 - p0) / 6
+            cp1x = p1[0] + (p2[0] - p0[0]) / 6.0
+            cp1y = p1[1] + (p2[1] - p0[1]) / 6.0
+            # Control point 2: p2 - (p3 - p1) / 6
+            cp2x = p2[0] - (p3[0] - p1[0]) / 6.0
+            cp2y = p2[1] - (p3[1] - p1[1]) / 6.0
+
+            d_parts.append(f"C {round(cp1x, 2)} {round(cp1y, 2)}, " f"{round(cp2x, 2)} {round(cp2y, 2)}, " f"{round(p2[0], 2)} {round(p2[1], 2)}")
+        return " ".join(d_parts)
+
+    @staticmethod
+    def _render_stitch_trace_to_svg(
+        parent: ET.Element,
+        trace_data: TraceData,
+        color: str,
+        stroke_width: float,
+        opacity: float,
+        tx: Callable[[float], float],
+        ty: Callable[[float], float],
+    ) -> None:
+        """Render a set of stitch edges as SVG line elements.
+
+        The trace data stores edges as triplets: start-point, end-point, None-separator.
+        We iterate in groups of three to draw each edge.
+
+        Args:
+            parent: The SVG group element to append lines to.
+            trace_data: The stitch trace data containing coordinates.
+            color: Stroke color.
+            stroke_width: Stroke width in pixels.
+            opacity: Line opacity.
+            tx: Transform function for x coordinates.
+            ty: Transform function for y coordinates.
+        """
+        xs = trace_data["x"]
+        ys = trace_data["y"]
+        i = 0
+        while i + 1 < len(xs):
+            x1, y1 = xs[i], ys[i]
+            x2, y2 = xs[i + 1], ys[i + 1]
+            if x1 is not None and y1 is not None and x2 is not None and y2 is not None:
+                line = ET.SubElement(
+                    parent,
+                    "line",
+                    x1=str(round(tx(x1), 2)),
+                    y1=str(round(ty(y1), 2)),
+                    x2=str(round(tx(x2), 2)),
+                    y2=str(round(ty(y2), 2)),
+                    stroke=color,
+                )
+                line.set("stroke-width", str(round(stroke_width, 2)))
+                line.set("opacity", str(opacity))
+            # Skip past the None separator (every 3rd entry).
+            i += 3
+
+    # ── Position calculation (unchanged from Plotly version) ─────────────
+
+    def _position_loops(self) -> None:
+        """Calculate and set the x,y coordinate positions of all loops to be visualized."""
+        self._position_base_course()
+        self._place_loops_in_courses()
+        self._shift_knit_purl()
+        self._shift_loops_by_float_alignment()
+
+    def _shift_knit_purl(self, shift: float = 0.1) -> None:
+        """Adjust the horizontal position of loops to visually distinguish knit from purl stitches."""
+        has_knits = any(pd is Pull_Direction.BtF for _u, _v, pd in self.knit_graph.edge_iter)
+        has_purls = any(pd is Pull_Direction.FtB for _u, _v, pd in self.knit_graph.edge_iter)
+        if not (has_knits and has_purls):
+            return
+        yarn_over_align = set()
+        for loop in self.data_graph.nodes:
+            if not loop.has_parent_loops:
+                if self.knit_graph.has_child_loop(loop):
+                    yarn_over_align.add(loop)
+                continue
+            knit_parents = len([u for u in loop.parent_loops if self.knit_graph.get_pull_direction(u, loop) is Pull_Direction.BtF])
+            purl_parents = len([u for u in loop.parent_loops if self.knit_graph.get_pull_direction(u, loop) is Pull_Direction.FtB])
+            if knit_parents > purl_parents:
+                self._set_x_of_loop(loop, self._get_x_of_loop(loop) - shift)
+            elif purl_parents > knit_parents:
+                self._set_x_of_loop(loop, self._get_x_of_loop(loop) + shift)
+
+        for loop in yarn_over_align:
+            child_loop = self.knit_graph.get_child_loop(loop)
+            assert child_loop is not None
+            self._set_x_of_loop(loop, self._get_x_of_loop(child_loop))
+
+    def _shift_loops_by_float_alignment(self, float_increment: float = 0.25) -> None:
+        """Adjust the vertical position of loops based on their float relationships."""
+        float_adjusted = {}
+        for yarn in self.knit_graph.yarns:
+            for loop in yarn:
+                relative_positions = [self._get_y_of_loop(f) + float_increment for f in loop.loops_in_front_of_floats if f < loop]
+                relative_positions.extend([self._get_y_of_loop(b) - float_increment for b in loop.loops_behind_floats if b < loop])
+                if len(relative_positions) > 0:
+                    float_adjusted[loop] = self._get_y_of_loop(loop)
+                    y = sum(relative_positions) / len(relative_positions)
+                    self._set_y_of_loop(loop, y)
+                else:
+                    prior_loop = loop.prior_loop_on_yarn
+                    if prior_loop is not None and prior_loop in float_adjusted and self._get_y_of_loop(loop) == float_adjusted[prior_loop]:
+                        float_adjusted[loop] = self._get_y_of_loop(loop)
+                        self._set_y_of_loop(loop, self._get_y_of_loop(prior_loop))
+
+    def _get_course_of_loop(self, loop: LoopT) -> Course[LoopT]:
+        """Get the course (horizontal row) that contains the specified loop."""
+        return self.loops_to_course[loop]
+
+    def _place_loop(self, loop: LoopT, x: float, y: float) -> None:
+        """Add a loop to the visualization data graph at the specified coordinates."""
+        if self._loop_has_position(loop):
+            self._set_x_of_loop(loop, x)
+            self._set_y_of_loop(loop, y)
+        else:
+            self.data_graph.add_node(loop, x=x, y=y)
+
+    def _set_x_of_loop(self, loop: LoopT, x: float) -> None:
+        """Update the x coordinate of a loop in the visualization data graph."""
+        if self._loop_has_position(loop):
+            self.data_graph.nodes[loop]["x"] = x
+        else:
+            raise KeyError(f"Loop {loop} is not in the data graph")
+
+    def _set_y_of_loop(self, loop: LoopT, y: float) -> None:
+        """Update the y coordinate of a loop in the visualization data graph."""
+        if self._loop_has_position(loop):
+            self.data_graph.nodes[loop]["y"] = y
+        else:
+            raise KeyError(f"Loop {loop} is not in the data graph")
+
+    def _get_x_of_loop(self, loop: LoopT) -> float:
+        """Get the x coordinate of a loop from the visualization data graph."""
+        if self._loop_has_position(loop):
+            return float(self.data_graph.nodes[loop]["x"])
+        else:
+            raise KeyError(f"Loop {loop} is not in the data graph")
+
+    def _get_y_of_loop(self, loop: LoopT) -> float:
+        """Get the y coordinate of a loop from the visualization data graph."""
+        if self._loop_has_position(loop):
+            return float(self.data_graph.nodes[loop]["y"])
+        else:
+            raise KeyError(f"Loop {loop} is not in the data graph")
+
+    def _loop_has_position(self, loop: LoopT) -> bool:
+        """Check if a loop has been positioned in the visualization data graph."""
+        return bool(self.data_graph.has_node(loop))
+
+    def _stitch_has_position(self, u: LoopT, v: LoopT) -> bool:
+        """Check if a stitch edge between two loops has been added to the visualization."""
+        return bool(self.data_graph.has_edge(u, v))
+
+    def _place_loops_in_courses(self, course_spacing: float = 1.0) -> None:
+        """Position loops in all courses above the base course."""
+        y = course_spacing
+        for course in self.courses[self.first_course_index + 1 : self.top_course_index]:
+            self._place_loops_by_parents(course, y)
+            self._swap_loops_in_cables(course)
+            self._left_align_course(course)
+            self._balance_course(course)
+            y += course_spacing
+
+    def _swap_loops_in_cables(self, course: Course[LoopT]) -> None:
+        """Swap the horizontal positions of loops involved in cable crossings."""
+        for left_loop in course:
+            for right_loop in self.knit_graph.braid_graph.left_crossing_loops(left_loop):
+                crossing_direction = self.knit_graph.braid_graph.get_crossing(left_loop, right_loop)
+                if crossing_direction is not Crossing_Direction.No_Cross:
+                    left_x = self._get_x_of_loop(left_loop)
+                    self._set_x_of_loop(left_loop, self._get_x_of_loop(right_loop))
+                    self._set_x_of_loop(right_loop, left_x)
+
+    def _place_loops_by_parents(self, course: Course[LoopT], y: float) -> None:
+        """Position loops in a course based on the average position of their parent loops."""
+        for _x, loop in enumerate(course):
+            self._set_loop_x_by_parent_average(loop, y)
+        placed_loops = set()
+        for loop in self._loops_need_placement:
+            placed = self._set_loop_between_yarn_neighbors(loop, y)
+            if placed:
+                placed_loops.add(loop)
+        self._loops_need_placement.difference_update(placed_loops)
+        assert len(self._loops_need_placement) == 0, f"Loops {self._loops_need_placement} remain unplaced."
+
+    def _set_loop_x_by_parent_average(self, loop: LoopT, y: float) -> None:
+        """Set the x coordinate of a loop based on the weighted average of its parent positions."""
+        if len(loop.parent_loops) == 0:
+            self._loops_need_placement.add(loop)
+            return
+
+        def _parent_weight(stack_position: int) -> float:
+            return float(len(loop.parent_loops) - stack_position)
+
+        parent_positions = {
+            self._get_x_of_loop(parent_loop) * _parent_weight(stack_pos): _parent_weight(stack_pos) for stack_pos, parent_loop in enumerate(loop.parent_loops) if self.data_graph.has_node(parent_loop)
+        }
+        x = sum(parent_positions.keys()) / sum(parent_positions.values())
+        self._place_loop(loop, x=x, y=y)
+
+    def _set_loop_between_yarn_neighbors(self, loop: LoopT, y: float, spacing: float = 1.0) -> bool:
+        """Position a loop based on the average position of its yarn neighbors."""
+        spacing = abs(spacing)
+        x_neighbors = []
+        prior_loop = loop.prior_loop_on_yarn
+        next_loop = loop.next_loop_on_yarn
+        if prior_loop is not None and self._loop_has_position(prior_loop):
+            if self._get_y_of_loop(prior_loop) == y:
+                x_neighbors.append(self._get_x_of_loop(prior_loop) + spacing)
+            else:
+                x_neighbors.append(self._get_x_of_loop(prior_loop))
+        if next_loop is not None and self._loop_has_position(next_loop):
+            if self._get_y_of_loop(next_loop) == y:
+                x_neighbors.append(self._get_x_of_loop(next_loop) - spacing)
+            else:
+                x_neighbors.append(self._get_x_of_loop(next_loop))
+        if len(x_neighbors) == 0:
+            return False
+        x = sum(x_neighbors) / float(len(x_neighbors))
+        self._place_loop(loop, x=x, y=y)
+        return True
+
+    def _position_base_course(self, loop_space: float = 1.0) -> None:
+        """Position the loops in the bottom course and establish base metrics."""
+        base_course = self.courses[self.first_course_index]
+        faces = base_course.get_faces()
+        if len(faces) == 0:
+            self.base_left = 0
+            self.base_width = 0
+            return
+        first_face = faces[0]
+        for x, loop in enumerate(first_face if self.start_on_left else reversed(first_face)):
+            self._place_loop(loop, x=x * loop_space, y=0)
+
+        moving_leftward = self.start_on_left
+        for face in faces[1:]:
+            for loop in face:
+                prior_loop = loop.prior_loop_on_yarn
+                if prior_loop is not None:
+                    if moving_leftward:
+                        self._place_loop(loop, x=self._get_x_of_loop(prior_loop) - loop_space, y=0)
+                    else:
+                        self._place_loop(loop, x=self._get_x_of_loop(prior_loop) + loop_space, y=0)
+            moving_leftward = not moving_leftward
+        self._left_align_course(base_course)
+        self.base_left = min(self._get_x_of_loop(loop) for loop in base_course)
+        max_x = max(self._get_x_of_loop(loop) for loop in base_course)
+        self.base_width = max_x - self.base_left
+
+    def _left_align_course(self, course: Course[LoopT]) -> None:
+        """Align the leftmost loop of a course to x=0 if left alignment is enabled."""
+        if self.left_zero_align:
+            current_left = min(self._get_x_of_loop(loop) for loop in course)
+            if current_left != 0.0:
+                for loop in course:
+                    self._set_x_of_loop(loop, self._get_x_of_loop(loop) - current_left)
+
+    def _balance_course(self, course: Course[LoopT]) -> None:
+        """Scale the width of a course to match the base course width if balancing is enabled."""
+        current_left = min(self._get_x_of_loop(loop) for loop in course)
+        max_x = max(self._get_x_of_loop(loop) for loop in course)
+        course_width = max_x - current_left
+        if self.balance_by_base_width and course_width != self.base_width:
+
+            def _target_distance_from_left(l: LoopT) -> float:
+                current_distance_from_left = self._get_x_of_loop(l) - current_left
+                return (current_distance_from_left * self.base_width) / course_width
+
+            for loop in course:
+                self._set_x_of_loop(loop, _target_distance_from_left(loop) + current_left)
+
+    # ── Stitch edge collection (unchanged logic) ─────────────────────────
 
     def _add_cable_edges(self) -> None:
-        """Add all stitch edges that are involved in cable crossings to the appropriate trace data."""
+        """Add all stitch edges involved in cable crossings to the appropriate trace data."""
         for left_loop, right_loop, crossing_direction in self.knit_graph.braid_graph.edge_iter:
             for left_parent in left_loop.parent_loops:
                 self._add_stitch_edge(left_parent, left_loop, crossing_direction)
@@ -338,17 +620,16 @@ class Knit_Graph_Visualizer(Generic[LoopT]):
                 self._add_stitch_edge(right_parent, right_loop, ~crossing_direction)
 
     def _add_stitch_edges(self) -> None:
-        """Add all stitch edges to the visualization trace data based on their type and cable position."""
+        """Add all stitch edges to the trace data based on their type and cable position."""
         self._add_cable_edges()
-        # Add remaining stitches as though they have no cable crossing.
         for u, v, _ in self.knit_graph.edge_iter:
-            if not self._stitch_has_position(u, v) and self._loop_has_position(u) and self._loop_has_position(v):  # This edge has not been placed  # Both loops do have positions.
+            if not self._stitch_has_position(u, v) and self._loop_has_position(u) and self._loop_has_position(v):
                 self._add_stitch_edge(u, v, Crossing_Direction.No_Cross)
 
     def _add_stitch_edge(self, u: LoopT, v: LoopT, crossing_direction: Crossing_Direction) -> None:
-        """Add a single stitch edge to the appropriate trace data based on stitch type and cable crossing."""
+        """Add a single stitch edge to the appropriate trace data."""
         pull_direction = self.knit_graph.get_pull_direction(u, v)
-        if pull_direction is Pull_Direction.BtF:  # Knit Stitch:
+        if pull_direction is Pull_Direction.BtF:
             if crossing_direction is Crossing_Direction.Over_Right:
                 trace_data = self._top_knit_trace_data
             elif crossing_direction is Crossing_Direction.Under_Right:
@@ -374,305 +655,19 @@ class Knit_Graph_Visualizer(Generic[LoopT]):
         trace_data["x"].append(None)
         trace_data["y"].append(None)
 
-    def _set_loop_markers(self, loop_size: float = 30.0, loop_border_width: float = 2.0) -> None:
-        """Create plotly scatter objects to mark the position of each loop in the visualization."""
-        yarns_to_loop_data = {
-            yarn: {
-                "x": [self._get_x_of_loop(loop) for loop in yarn],
-                "y": [self._get_y_of_loop(loop) for loop in yarn],
-                "loop_id": [loop.loop_id for loop in yarn],
-            }
-            for yarn in self.knit_graph.yarns
-        }
-        self._loop_markers = [
-            Scatter(
-                name=f"Loops on {yarn.yarn_id}",
-                x=yarn_data["x"],
-                y=yarn_data["y"],
-                text=yarn_data["loop_id"],
-                textposition="middle center",
-                mode="markers+text",
-                marker={
-                    "reversescale": True,
-                    "color": yarn.properties.color,
-                    "size": loop_size,
-                    "line_width": loop_border_width,
-                },
-            )
-            for yarn, yarn_data in yarns_to_loop_data.items()
-        ]
+    # ── Comparison utilities ─────────────────────────────────────────────
 
-    def _set_yarn_traces(self, line_width: float = 1.0, smoothing: float = 1.3) -> None:
-        """Create plotly traces representing the path of each yarn through the knitted structure."""
-        yarns_to_float_data = {}
-        for yarn in self.knit_graph.yarns:
-            float_data: dict[str, list[float]] = {"x": [], "y": []}
-            for u in yarn:
-                if self._loop_has_position(u):
-                    float_data["x"].append(self._get_x_of_loop(u))
-                    float_data["y"].append(self._get_y_of_loop(u))
-            yarns_to_float_data[yarn] = float_data
-        self._yarn_traces = [
-            Scatter(
-                name=yarn.yarn_id,
-                x=float_data["x"],
-                y=float_data["y"],
-                line={
-                    "width": line_width,
-                    "color": yarn.properties.color,
-                    "shape": "spline",
-                    "smoothing": smoothing,
-                },
-                mode="lines",
-            )
-            for yarn, float_data in yarns_to_float_data.items()
-        ]
-
-    def _position_loops(self) -> None:
-        """Calculate and set the x,y coordinate positions of all loops to be visualized."""
-        self._position_base_course()
-        self._place_loops_in_courses()
-        self._shift_knit_purl()
-        self._shift_loops_by_float_alignment()
-
-    def _shift_knit_purl(self, shift: float = 0.1) -> None:
-        """Adjust the horizontal position of loops to visually distinguish knit from purl stitches."""
-        has_knits = any(pd is Pull_Direction.BtF for _u, _v, pd in self.knit_graph.edge_iter)
-        has_purls = any(pd is Pull_Direction.FtB for _u, _v, pd in self.knit_graph.edge_iter)
-        if not (has_knits and has_purls):
-            return  # Don't make any changes, because all stitches are of the same type.
-        yarn_over_align = set()
-        for loop in self.data_graph.nodes:
-            if not loop.has_parent_loops:  # Yarn-over
-                if self.knit_graph.has_child_loop(loop):  # Align yarn-overs with one child to its child
-                    yarn_over_align.add(loop)
-                continue  # Don't shift yarn-overs
-            knit_parents = len([u for u in loop.parent_loops if self.knit_graph.get_pull_direction(u, loop) is Pull_Direction.BtF])
-            purl_parents = len([u for u in loop.parent_loops if self.knit_graph.get_pull_direction(u, loop) is Pull_Direction.FtB])
-            if knit_parents > purl_parents:  # Shift the loop as though it is being knit.
-                self._set_x_of_loop(loop, self._get_x_of_loop(loop) - shift)
-            elif purl_parents > knit_parents:  # Shift the loop as though it is being purled.
-                self._set_x_of_loop(loop, self._get_x_of_loop(loop) + shift)
-
-        for loop in yarn_over_align:
-            child_loop = self.knit_graph.get_child_loop(loop)
-            assert child_loop is not None
-            self._set_x_of_loop(loop, self._get_x_of_loop(child_loop))
-
-    def _shift_loops_by_float_alignment(self, float_increment: float = 0.25) -> None:
-        """Adjust the vertical position of loops based on their float relationships."""
-        for yarn in self.knit_graph.yarns:
-            for u, v, front_loops in yarn.loops_in_front_of_floats():
-                for front_loop in front_loops:
-                    if u in self._get_course_of_loop(front_loop) and v in self._get_course_of_loop(front_loop):  # same course, adjust float position
-                        self._set_y_of_loop(
-                            front_loop,
-                            self._get_y_of_loop(front_loop) - float_increment,
-                        )  # shift loop down to show it is in front of the float.
-            for u, v, back_loops in yarn.loops_behind_floats():
-                for back_loop in back_loops:
-                    if u in self._get_course_of_loop(back_loop) and v in self._get_course_of_loop(back_loop):  # same course, adjust float position
-                        self._set_y_of_loop(back_loop, self._get_y_of_loop(back_loop) + float_increment)  # shift loop up to show it is behind the float.
-
-    def _get_course_of_loop(self, loop: LoopT) -> Course[LoopT]:
-        """Get the course (horizontal row) that contains the specified loop."""
-        return self.loops_to_course[loop]
-
-    def _place_loop(self, loop: LoopT, x: float, y: float) -> None:
-        """Add a loop to the visualization data graph at the specified coordinates."""
-        if self._loop_has_position(loop):
-            self._set_x_of_loop(loop, x)
-            self._set_y_of_loop(loop, y)
-        else:
-            self.data_graph.add_node(loop, x=x, y=y)
-
-    def _set_x_of_loop(self, loop: LoopT, x: float) -> None:
-        """Update the x coordinate of a loop that already exists in the visualization data graph."""
-        if self._loop_has_position(loop):
-            self.data_graph.nodes[loop]["x"] = x
-        else:
-            raise KeyError(f"Loop {loop} is not in the data graph")
-
-    def _set_y_of_loop(self, loop: LoopT, y: float) -> None:
-        """Update the y coordinate of a loop that already exists in the visualization data graph."""
-        if self._loop_has_position(loop):
-            self.data_graph.nodes[loop]["y"] = y
-        else:
-            raise KeyError(f"Loop {loop} is not in the data graph")
-
-    def _get_x_of_loop(self, loop: LoopT) -> float:
-        """Get the x coordinate of a loop from the visualization data graph."""
-        if self._loop_has_position(loop):
-            return float(self.data_graph.nodes[loop]["x"])
-        else:
-            raise KeyError(f"Loop {loop} is not in the data graph")
-
-    def _get_y_of_loop(self, loop: LoopT) -> float:
-        """Get the y coordinate of a loop from the visualization data graph."""
-        if self._loop_has_position(loop):
-            return float(self.data_graph.nodes[loop]["y"])
-        else:
-            raise KeyError(f"Loop {loop} is not in the data graph")
-
-    def _loop_has_position(self, loop: LoopT) -> bool:
-        """Check if a loop has been positioned in the visualization data graph."""
-        return bool(self.data_graph.has_node(loop))
-
-    def _stitch_has_position(self, u: LoopT, v: LoopT) -> bool:
-        """Check if a stitch edge between two loops has been added to the visualization data graph."""
-        return bool(self.data_graph.has_edge(u, v))
-
-    def _place_loops_in_courses(self, course_spacing: float = 1.0) -> None:
-        """Position loops in all courses above the base course using parent relationships and yarn connections."""
-        y = course_spacing
-        for course in self.courses[self.first_course_index + 1 : self.top_course_index]:
-            self._place_loops_by_parents(course, y)
-            self._swap_loops_in_cables(course)
-            self._left_align_course(course)
-            self._balance_course(course)
-            y += course_spacing  # Shift y coordinate up with each course
-
-    def _swap_loops_in_cables(self, course: Course[LoopT]) -> None:
-        """Swap the horizontal positions of loops involved in cable crossings within a course."""
-        for left_loop in course:
-            for right_loop in self.knit_graph.braid_graph.left_crossing_loops(left_loop):
-                crossing_direction = self.knit_graph.braid_graph.get_crossing(left_loop, right_loop)
-                if crossing_direction is not Crossing_Direction.No_Cross:  # Swap the position of loops that cross each other.
-                    left_x = self._get_x_of_loop(left_loop)
-                    self._set_x_of_loop(left_loop, self._get_x_of_loop(right_loop))
-                    self._set_x_of_loop(right_loop, left_x)
-
-    def _place_loops_by_parents(self, course: Course[LoopT], y: float) -> None:
-        """Position loops in a course based on the average position of their parent loops."""
-        for _x, loop in enumerate(course):
-            self._set_loop_x_by_parent_average(loop, y)
-        placed_loops = set()
-        for loop in self._loops_need_placement:
-            placed = self._set_loop_between_yarn_neighbors(loop, y)
-            if placed:
-                placed_loops.add(loop)
-        self._loops_need_placement.difference_update(placed_loops)
-        assert len(self._loops_need_placement) == 0, f"Loops {self._loops_need_placement} remain unplaced."
-        # A loops past the first course should have at least one yarn neighbor to place them.
-
-    def _set_loop_x_by_parent_average(self, loop: LoopT, y: float) -> None:
-        """Set the x coordinate of a loop based on the weighted average position of its parent loops."""
-        if len(loop.parent_loops) == 0:
-            self._loops_need_placement.add(loop)
-            return
-
-        def _parent_weight(stack_position: int) -> float:
-            return float(len(loop.parent_loops) - stack_position)
-
-        parent_positions = {
-            self._get_x_of_loop(parent_loop) * _parent_weight(stack_pos): _parent_weight(stack_pos)  # position of parents weighted by their stack position.  # weight of the stack position.
-            for stack_pos, parent_loop in enumerate(loop.parent_loops)
-            if self.data_graph.has_node(parent_loop)
-        }  # Only include parent loops that are positioned.
-        x = sum(parent_positions.keys()) / sum(parent_positions.values())
-        self._place_loop(loop, x=x, y=y)
-
-    def _set_loop_between_yarn_neighbors(self, loop: LoopT, y: float, spacing: float = 1.0) -> bool:
-        """Position a loop based on the average position of its neighboring loops along the yarn."""
-        spacing = abs(spacing)  # Ensure spacing is positive.
-        x_neighbors = []
-        prior_loop = loop.prior_loop_on_yarn
-        next_loop = loop.next_loop_on_yarn
-        if prior_loop is not None and self._loop_has_position(prior_loop):
-            if self._get_y_of_loop(prior_loop) == y:  # Include the spacing to ensure these are not at overlapping positions.
-                x_neighbors.append(self._get_x_of_loop(prior_loop) + spacing)
-            else:  # Don't include spacing because the prior loop is on the prior course.
-                x_neighbors.append(self._get_x_of_loop(prior_loop))
-        if next_loop is not None and self._loop_has_position(next_loop):
-            if self._get_y_of_loop(next_loop) == y:  # Include the spacing to ensure these are not at overlapping positions.
-                x_neighbors.append(self._get_x_of_loop(next_loop) - spacing)
-            else:  # Don't include spacing because the prior loop is on the prior course.
-                x_neighbors.append(self._get_x_of_loop(next_loop))
-        if len(x_neighbors) == 0:
-            return False
-        x = sum(x_neighbors) / float(len(x_neighbors))  # the average of the two neighbors
-        self._place_loop(loop, x=x, y=y)
-        return True
-
-    def _position_base_course(self) -> None:
-        """Position the loops in the bottom course of the visualization and establish base metrics."""
-        base_course = self.courses[self.first_course_index]
-        if len(self.courses) > self.first_course_index + 1 and base_course.in_round_with(  # There are more courses to show after the base course
-            self.courses[self.first_course_index + 1]
-        ):  # The first course is knit in the round to form a tube structure.
-            self._get_base_round_course_positions(base_course)
-        else:
-            self._get_base_row_course_positions(base_course)
-        self._left_align_course(base_course)
-        self.base_left = min(self._get_x_of_loop(loop) for loop in base_course)
-        max_x = max(self._get_x_of_loop(loop) for loop in base_course)
-        self.base_width = max_x - self.base_left
-
-    def _get_base_round_course_positions(self, base_course: Course[LoopT], loop_space: float = 1.0, back_shift: float = 0.5) -> None:
-        """Position loops in the base course for circular/tube knitting structure."""
-        split_index = len(base_course) // 2  # Split the course in half to form a tube.
-        front_loops = base_course[:split_index]
-        front_set = set(front_loops)
-        back_loops = base_course[split_index:]
-        if self.start_on_left:
-            back_loops = [*reversed(back_loops)]
-        else:
-            front_loops = [*reversed(front_loops)]
-        for x, front_loop in enumerate(front_loops):
-            self._place_loop(front_loop, x=x, y=0)
-        for x, back_loop in enumerate(back_loops):
-            float_positions = [self._get_x_of_loop(front_loop) for front_loop in back_loop.front_floats if front_loop in front_set]
-            if len(float_positions) > 0:  # If the back loop is floating behind other loops in the front of the course, set the position to be centered between the loops it is floating behind.
-                self._place_loop(
-                    back_loop,
-                    x=sum(float_positions) / float(len(float_positions)),
-                    y=0.0,
-                )
-            elif self.start_on_left:
-                self._place_loop(back_loop, x=(x * loop_space) + back_shift, y=0)
-            else:
-                self._place_loop(back_loop, x=(x * loop_space) - back_shift, y=0)
-
-    def _get_base_row_course_positions(self, base_course: Course[LoopT], loop_space: float = 1.0) -> None:
-        """Position loops in the base course for flat/row knitting structure."""
-        for x, loop in enumerate(base_course if self.start_on_left else reversed(base_course)):
-            self._place_loop(loop, x=x * loop_space, y=0)
-
-    def _left_align_course(self, course: Course[LoopT]) -> None:
-        """Align the leftmost loop of a course to x=0 if left alignment is enabled."""
-        if self.left_zero_align:
-            current_left = min(self._get_x_of_loop(loop) for loop in course)
-            if current_left != 0.0:
-                for loop in course:
-                    self._set_x_of_loop(loop, self._get_x_of_loop(loop) - current_left)
-
-    def _balance_course(self, course: Course[LoopT]) -> None:
-        """Scale the width of a course to match the base course width if balancing is enabled."""
-        current_left = min(self._get_x_of_loop(loop) for loop in course)
-        max_x = max(self._get_x_of_loop(loop) for loop in course)
-        course_width = max_x - current_left
-        if self.balance_by_base_width and course_width != self.base_width:
-
-            def _target_distance_from_left(l: LoopT) -> float:
-                current_distance_from_left = self._get_x_of_loop(l) - current_left
-                return (current_distance_from_left * self.base_width) / course_width
-
-            for loop in course:
-                self._set_x_of_loop(loop, _target_distance_from_left(loop) + current_left)
-
-    def x_coordinate_differences(self, other: Knit_Graph_Visualizer[LoopT]) -> dict[LoopT, tuple[float | None, float | None]]:
-        """Find the differences in x-coordinates between two knitgraph visualizations. Used for testing and comparing visualization results.
+    def x_coordinate_differences(
+        self,
+        other: Knit_Graph_Visualizer[LoopT],
+    ) -> dict[LoopT, tuple[float | None, float | None]]:
+        """Find the differences in x-coordinates between two visualizations.
 
         Args:
-            other (Knit_Graph_Visualizer): The knitgraph visualization to compare to.
+            other: The visualization to compare to.
 
         Returns:
-            dict[Loop: tuple[float | None, float | None]]: The differences in x-coordinates.
-            * The keys of the dictionary are loops with differences between the two visualizations.
-            * The values of the dictionary are tuples of floats or None.
-            ** The first value in each tuple is the x-coordinate of the loop in this knitgraph visualization or None if the loop is not in this visualization.
-            ** The second value of each tuple is the x-coordinate of the loop in the other visualization or NOne if the loop is not in that visualization.
-
+            A dict mapping loops with coordinate differences to (self_x, other_x) tuples.
         """
         differences: dict[LoopT, tuple[float | None, float | None]] = {cast(LoopT, l): (self._get_x_of_loop(l), None) for l in self.data_graph.nodes if not other.data_graph.has_node(l)}
         differences.update({cast(LoopT, l): (None, other._get_x_of_loop(l)) for l in other.data_graph.nodes if not self.data_graph.has_node(l)})
@@ -681,19 +676,17 @@ class Knit_Graph_Visualizer(Generic[LoopT]):
         )
         return differences
 
-    def y_coordinate_differences(self, other: Knit_Graph_Visualizer) -> dict[LoopT, tuple[float | None, float | None]]:
-        """Find the differences in y-coordinates between two knitgraph visualizations. Used for testing and comparing visualization results.
+    def y_coordinate_differences(
+        self,
+        other: Knit_Graph_Visualizer[LoopT],
+    ) -> dict[LoopT, tuple[float | None, float | None]]:
+        """Find the differences in y-coordinates between two visualizations.
 
         Args:
-            other (Knit_Graph_Visualizer): The knitgraph visualization to compare to.
+            other: The visualization to compare to.
 
         Returns:
-            dict[Loop: tuple[float | None, float | None]]: The differences in y-coordinates.
-            * The keys of the dictionary are loops with differences between the two visualizations.
-            * The values of the dictionary are tuples of floats or None.
-            ** The first value in each tuple is the y-coordinate of the loop in this knitgraph visualization or None if the loop is not in this visualization.
-            ** The second value of each tuple is the y-coordinate of the loop in the other visualization or NOne if the loop is not in that visualization.
-
+            A dict mapping loops with coordinate differences to (self_y, other_y) tuples.
         """
         differences: dict[LoopT, tuple[float | None, float | None]] = {cast(LoopT, l): (self._get_y_of_loop(l), None) for l in self.data_graph.nodes if not other.data_graph.has_node(l)}
         differences.update({cast(LoopT, l): (None, other._get_y_of_loop(l)) for l in other.data_graph.nodes if not self.data_graph.has_node(l)})
@@ -703,19 +696,16 @@ class Knit_Graph_Visualizer(Generic[LoopT]):
         return differences
 
     def __eq__(self, other: object) -> bool:
-        """Two visualizations are equal if share the same x,y coordinates for all loops in the visualization and both contain the same set of loop nodes.
-        Args:
-            other (Knit_Graph_Visualizer): The knitgraph visualization to compare to.
-
-        Returns:
-            bool: True if the knitgraph visualizations are equal, False otherwise.
-        """
+        """Two visualizations are equal if they share the same coordinates for all loops."""
         return (
             isinstance(other, Knit_Graph_Visualizer)
             and len(self.data_graph.nodes) == len(other.data_graph.nodes)
             and len(self.x_coordinate_differences(other)) == 0
             and len(self.y_coordinate_differences(other)) == 0
         )
+
+
+# ── Convenience functions ────────────────────────────────────────────────
 
 
 def visualize_knit_graph(
@@ -726,24 +716,25 @@ def visualize_knit_graph(
     balance_by_base_width: bool = False,
     left_zero_align: bool = True,
     graph_title: str = "knit_graph",
-    show_figure: bool = True,
-    renderer: str | None = None,
-) -> Figure:
-    """Generate and optionally display a plotly visualization of the given knit graph with specified configuration.
+    filepath: str | Path = "knit_graph.svg",
+    **svg_kwargs: Any,
+) -> Path:
+    """Generate and save an SVG visualization of the given knit graph.
 
     Args:
-        knit_graph (Knit_Graph): The knit graph to visualize.
-        first_course_index (int): Index of the first (bottom) course to include in the visualization. Defaults to 0.
-        top_course_index (int | None): Index of the last (top) course to include in the visualization. If None, visualizes up to the top of the knit graph.
-        start_on_left (bool): Whether the first loop knit is presumed to be positioned on the left of the pattern. Defaults to True.
-        balance_by_base_width (bool): Whether to scale all course widths to match the first course width. Defaults to False.
-        left_zero_align (bool): Whether to align the leftmost position of each course with x=0 in the figure. Defaults to True.
-        graph_title (str): The title to display on the generated figure. Defaults to "knit_graph".
-        show_figure (bool, optional): If True, the visualization will be shown. Defaults to True.
-        renderer (str, optional): Plotly renderer to use. Common options: 'browser', 'notebook'. Defaults to None (uses configured default).
+        knit_graph: The knit graph to visualize.
+        first_course_index: Index of the first (bottom) course. Defaults to 0.
+        top_course_index: Index of the last (top) course. If None, visualizes all.
+        start_on_left: Whether the first loop is on the left. Defaults to True.
+        balance_by_base_width: Whether to scale course widths to match the base. Defaults to False.
+        left_zero_align: Whether to left-align each course to x=0. Defaults to True.
+        graph_title: Title displayed on the SVG. Defaults to "knit_graph".
+        filepath: Output file path. Defaults to "knit_graph.svg".
+        **svg_kwargs: Additional keyword arguments forwarded to
+            :meth:`Knit_Graph_SVG_Visualizer.make_svg`.
 
     Returns:
-        Figure: The plotly figure object.
+        The resolved Path where the SVG file was written.
     """
     visualizer = Knit_Graph_Visualizer(
         knit_graph,
@@ -753,61 +744,4 @@ def visualize_knit_graph(
         balance_by_base_width,
         left_zero_align,
     )
-    fig = visualizer.make_figure(graph_title)
-
-    if show_figure:
-        try:
-            # Configure display to minimize resource usage
-            config = {
-                "displayModeBar": False,  # Hide toolbar to reduce resource usage
-                "displaylogo": False,  # Hide plotly logo
-                "staticPlot": False,  # Keep interactive
-                "scrollZoom": True,  # Allow zoom
-                "doubleClick": "reset+autosize",  # Double-click behavior
-            }
-
-            if renderer:
-                fig.show(renderer=renderer, config=config)
-            else:
-                fig.show(config=config)
-        except Exception as e:
-            print(f"Warning: Could not display figure '{graph_title}': {e}")
-            print("Figure created successfully but display failed.")
-
-    return fig
-
-
-def visualize_knit_graph_safe(
-    knit_graph: Knit_Graph,
-    first_course_index: int = 0,
-    top_course_index: int | None = None,
-    start_on_left: bool = True,
-    balance_by_base_width: bool = False,
-    left_zero_align: bool = True,
-    graph_title: str = "knit_graph",
-) -> Figure:
-    """Generate a plotly visualization of the given knit graph with specified configuration.
-    This function is safe for UnitTest and other headless environments because it does not attempt to show the visualization.
-
-    Args:
-        knit_graph (Knit_Graph): The knit graph to visualize.
-        first_course_index (int): Index of the first (bottom) course to include in the visualization. Defaults to 0.
-        top_course_index (int | None): Index of the last (top) course to include in the visualization. If None, visualizes up to the top of the knit graph.
-        start_on_left (bool): Whether the first loop knit is presumed to be positioned on the left of the pattern. Defaults to True.
-        balance_by_base_width (bool): Whether to scale all course widths to match the first course width. Defaults to False.
-        left_zero_align (bool): Whether to align the leftmost position of each course with x=0 in the figure. Defaults to True.
-        graph_title (str): The title to display on the generated figure. Defaults to "knit_graph".
-
-    Returns:
-        Figure: The plotly figure object.
-    """
-    return visualize_knit_graph(
-        knit_graph,
-        first_course_index=first_course_index,
-        top_course_index=top_course_index,
-        start_on_left=start_on_left,
-        balance_by_base_width=balance_by_base_width,
-        left_zero_align=left_zero_align,
-        graph_title=graph_title,
-        show_figure=False,
-    )
+    return visualizer.save_svg(filepath=filepath, graph_title=graph_title, **svg_kwargs)
